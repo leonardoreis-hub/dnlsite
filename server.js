@@ -110,11 +110,32 @@ async function notifyVisit(v, listing) {
 const app = express();
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '1mb' }));
+// Sessões guardadas no SQLite, para o login sobreviver a reinícios e atualizações
+db.exec(`CREATE TABLE IF NOT EXISTS sessions (sid TEXT PRIMARY KEY, data TEXT NOT NULL, expires INTEGER NOT NULL)`);
+class SqliteStore extends session.Store {
+  get(sid, cb) {
+    const r = db.prepare('SELECT data, expires FROM sessions WHERE sid = ?').get(sid);
+    if (!r || r.expires < Date.now()) return cb(null, null);
+    try { cb(null, JSON.parse(r.data)); } catch (e) { cb(e); }
+  }
+  set(sid, sess, cb) {
+    const exp = sess.cookie?.expires ? new Date(sess.cookie.expires).getTime() : Date.now() + 864e5;
+    db.prepare('INSERT INTO sessions (sid, data, expires) VALUES (?, ?, ?) ON CONFLICT(sid) DO UPDATE SET data = excluded.data, expires = excluded.expires').run(sid, JSON.stringify(sess), exp);
+    cb && cb(null);
+  }
+  destroy(sid, cb) { db.prepare('DELETE FROM sessions WHERE sid = ?').run(sid); cb && cb(null); }
+  touch(sid, sess, cb) { this.set(sid, sess, cb); }
+}
+setInterval(() => db.prepare('DELETE FROM sessions WHERE expires < ?').run(Date.now()), 3600e3).unref();
+// Segredo estável: usa SESSION_SECRET ou deriva do login do admin (não muda entre reinícios)
+const SESSION_SECRET = process.env.SESSION_SECRET ||
+  crypto.createHash('sha256').update('dnl-session:' + ADMIN_USER + ':' + ADMIN_PASSWORD).digest('hex');
 app.use(session({
-  secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
+  store: new SqliteStore(),
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: 'lax', maxAge: 1000 * 60 * 60 * 12, secure: process.env.NODE_ENV === 'production' },
+  cookie: { httpOnly: true, sameSite: 'lax', maxAge: 1000 * 60 * 60 * 24 * 30, secure: process.env.NODE_ENV === 'production' },
 }));
 
 const requireAdmin = (req, res, next) => (req.session.admin ? next() : res.status(401).json({ error: 'Não autorizado' }));
