@@ -175,8 +175,8 @@ function render() {
     const m = window.L ? window.L.map('map', { scrollWheelZoom: false }).setView([L.lat, L.lng], 15) : null;
     if (m) {
       window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
-      window.L.circle([L.lat, L.lng], { radius: 260, color: '#E0435A', weight: 1.5, fillColor: '#E0435A', fillOpacity: .15 }).addTo(m);
-      window.L.marker([L.lat, L.lng], { icon: window.L.divIcon({ className: '', html: `<div style="width:48px;height:48px;border-radius:50%;background:#E0435A;display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px rgba(0,0,0,.25)">${I.house.replace('<svg', '<svg width="24" height="24" style="stroke:#fff"')}</div>`, iconSize: [48, 48], iconAnchor: [24, 24] }) }).addTo(m);
+      window.L.circle([L.lat, L.lng], { radius: 260, color: '#0E2651', weight: 1.5, fillColor: '#0E2651', fillOpacity: .15 }).addTo(m);
+      window.L.marker([L.lat, L.lng], { icon: window.L.divIcon({ className: '', html: `<div style="width:48px;height:48px;border-radius:50%;background:#0E2651;display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px rgba(0,0,0,.25)">${I.house.replace('<svg', '<svg width="24" height="24" style="stroke:#fff"')}</div>`, iconSize: [48, 48], iconAnchor: [24, 24] }) }).addTo(m);
     }
   }
 

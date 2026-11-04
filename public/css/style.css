@@ -1,8 +1,9 @@
 /* DNL — design system inspirado no padrão visual de marketplaces de hospedagem */
 :root {
-  --brand: #E0435A;
-  --brand-dark: #C42F48;
-  --brand-grad: linear-gradient(to right, #E0435A 0%, #D6345A 50%, #C42F48 100%);
+  --brand: #0E2651;
+  --brand-dark: #091A38;
+  --brand-grad: linear-gradient(to right, #17346B 0%, #0E2651 55%, #091A38 100%);
+  --gold: #D3A764;
   --ink: #222222;
   --ink-2: #484848;
   --muted: #6A6A6A;
