@@ -108,13 +108,12 @@ function headerHTML({ search = false } = {}) {
     </form>` : ''}
     <div class="header-right">
       <a class="pill-link" href="/#anuncios">Ver espaços</a>
-      <a class="user-menu" href="/admin" title="Área do administrador">${I.menu}<span class="avatar">${I.user}</span></a>
     </div>
   </div></header>`;
 }
 function footerHTML() {
   return `<footer class="footer"><div class="wrap">
     <div>© ${new Date().getFullYear()} DNL Management · Cork, Irlanda</div>
-    <div><a href="/">Espaços</a> · <a href="/admin">Gerenciar anúncios</a></div>
+    <div><a href="/">Ver todos os espaços</a></div>
   </div></footer>`;
 }
