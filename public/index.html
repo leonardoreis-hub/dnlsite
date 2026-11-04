@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DNL Management · Quartos e casas para alugar</title>
+<meta name="description" content="Quartos, estúdios e casas para aluguel mensal. Veja fotos, localização e agende uma visita.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 3 13.5V29h9v-8h8v8h9V13.5z' fill='%23E0435A'/%3E%3C/svg%3E">
+</head>
+<body>
+<div id="hdr"></div>
+<nav class="cats"><div class="wrap" id="cats"></div></nav>
+<main class="wrap" id="anuncios">
+  <div class="grid" id="grid"></div>
+</main>
+<div id="ftr"></div>
+
+<script src="/js/common.js"></script>
+<script>
+document.getElementById('hdr').innerHTML = headerHTML({ search: true });
+document.getElementById('ftr').innerHTML = footerHTML();
+
+let all = [], cat = 'Todos';
+const $ = (s) => document.querySelector(s);
+
+$('#cats').innerHTML = TYPES.map((t) =>
+  `<button class="cat${t.k === cat ? ' active' : ''}" data-k="${t.k}">${I[t.icon]}<span>${t.k === 'Todos' ? 'Todos' : t.k}</span></button>`).join('');
+$('#cats').addEventListener('click', (e) => {
+  const b = e.target.closest('.cat'); if (!b) return;
+  cat = b.dataset.k;
+  document.querySelectorAll('.cat').forEach((c) => c.classList.toggle('active', c === b));
+  render();
+});
+['q', 'qmax', 'qwhen'].forEach((id) => $('#' + id).addEventListener('input', render));
+
+function skeleton() {
+  $('#grid').innerHTML = Array.from({ length: 8 }, () => `
+    <div><div class="sk" style="aspect-ratio:20/19;border-radius:12px"></div>
+    <div class="sk" style="height:14px;width:70%;margin-top:14px"></div>
+    <div class="sk" style="height:14px;width:45%;margin-top:8px"></div></div>`).join('');
+}
+
+function cardHTML(l) {
+  const photos = l.photos.length ? l.photos.slice(0, 8) : [null];
+  const isNew = (Date.now() - new Date(l.created_at.replace(' ', 'T') + 'Z')) < 14 * 864e5;
+  return `
+  <a class="card" href="/anuncio/${l.id}" data-id="${l.id}">
+    <div class="media">
+      <div class="track">${photos.map((p) => p ? `<img src="${esc(p)}" alt="" loading="lazy">` : `<div style="width:100%;flex-shrink:0;display:grid;place-items:center;color:#bbb">${I.house.replace('<svg', '<svg width="48"')}</div>`).join('')}</div>
+      ${isNew ? '<span class="badge">Novo</span>' : ''}
+      <button class="fav${favs.has(l.id) ? ' on' : ''}" aria-label="Favoritar">${I.heart}</button>
+      ${photos.length > 1 ? `
+        <button class="nav prev" aria-label="Anterior" style="display:none">${I.left}</button>
+        <button class="nav next" aria-label="Próxima">${I.right}</button>
+        <div class="dots">${photos.slice(0, 5).map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>` : ''}
+    </div>
+    <div class="info">
+      <div class="row1"><span class="t">${esc(l.type)} em ${esc(l.area || 'Cork')}</span></div>
+      <div class="sub">${esc(l.title)}</div>
+      <div class="sub">${availText(l.available_from)}</div>
+      <div class="price"><b>${eur(l.price)}</b> mês${l.bills_included ? ' · contas inclusas' : ''}</div>
+    </div>
+  </a>`;
+}
+
+function filtered() {
+  const q = $('#q').value.trim().toLowerCase();
+  const max = parseInt($('#qmax').value) || Infinity;
+  const when = $('#qwhen').value;
+  return all.filter((l) => {
+    if (cat !== 'Todos' && l.type !== cat) return false;
+    if (q && !`${l.title} ${l.area} ${l.address} ${l.description}`.toLowerCase().includes(q)) return false;
+    if (l.price > max) return false;
+    if (when !== '') {
+      const lim = Date.now() + parseInt(when) * 864e5 + 864e5;
+      const d = l.available_from ? new Date(l.available_from + 'T12:00:00').getTime() : 0;
+      if (d > lim) return false;
+    }
+    return true;
+  });
+}
+
+function render() {
+  const list = filtered();
+  if (!list.length) {
+    $('#grid').innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <h2>${all.length ? 'Nenhum espaço encontrado' : 'Em breve, novos espaços'}</h2>
+      <p>${all.length ? 'Tente mudar os filtros ou remover alguns deles.' : 'Estamos preparando os anúncios. Volte em breve.'}</p></div>`;
+    return;
+  }
+  $('#grid').innerHTML = list.map(cardHTML).join('');
+}
+
+// Carrossel de cada card
+$('#grid').addEventListener('click', (e) => {
+  const card = e.target.closest('.card'); if (!card) return;
+  const fav = e.target.closest('.fav');
+  if (fav) {
+    e.preventDefault();
+    const on = favs.toggle(+card.dataset.id);
+    fav.classList.toggle('on', on);
+    toast(on ? 'Salvo nos favoritos' : 'Removido dos favoritos');
+    return;
+  }
+  const nav = e.target.closest('.nav'); if (!nav) return;
+  e.preventDefault();
+  const track = card.querySelector('.track'), n = track.children.length;
+  let i = (+card.dataset.i || 0) + (nav.classList.contains('next') ? 1 : -1);
+  i = Math.max(0, Math.min(n - 1, i)); card.dataset.i = i;
+  track.style.transform = `translateX(-${i * 100}%)`;
+  card.querySelector('.prev').style.display = i ? '' : 'none';
+  card.querySelector('.next').style.display = i < n - 1 ? '' : 'none';
+  const dots = card.querySelectorAll('.dots i'), d = Math.min(i, dots.length - 1);
+  dots.forEach((x, k) => x.classList.toggle('on', k === (i >= dots.length ? dots.length - 1 : d)));
+});
+
+skeleton();
+api('/api/listings').then((r) => { all = r; render(); }).catch(() => { $('#grid').innerHTML = '<div class="empty" style="grid-column:1/-1"><h2>Não foi possível carregar</h2><p>Atualize a página.</p></div>'; });
+</script>
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Anúncio · DNL Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 3 13.5V29h9v-8h8v8h9V13.5z' fill='%23E0435A'/%3E%3C/svg%3E">
+</head>
+<body class="has-mbar">
+<div id="hdr"></div>
+<main id="page">
+  <div class="lwrap" style="padding-top:24px"><div class="sk" style="height:30px;width:50%"></div>
+  <div class="sk" style="height:420px;margin-top:24px;border-radius:12px"></div></div>
+</main>
+<div id="ftr"></div>
+
+<!-- Modal de agendamento (mobile) -->
+<div class="modal" id="schedModal"><div class="sheet">
+  <div class="sheet-h"><button class="x" data-close aria-label="Fechar"></button>Agendar visita</div>
+  <div class="sheet-b" id="schedMobile"></div>
+</div></div>
+
+<!-- Todas as fotos -->
+<div class="photos-full" id="allPhotos">
+  <div class="top"><button class="btn-ghost btn" id="closeAll" style="text-decoration:none;display:flex;gap:6px"></button></div>
+  <div class="list" id="allList"></div>
+</div>
+<div class="lightbox" id="lb">
+  <button class="lbx" id="lbx"></button><div class="lbt" id="lbt"></div>
+  <button class="lbn p" id="lbp"></button><img id="lbi" alt=""><button class="lbn n" id="lbn"></button>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/js/common.js"></script>
+<script>
+document.getElementById('hdr').innerHTML = headerHTML();
+document.getElementById('ftr').innerHTML = footerHTML();
+const $ = (s, r = document) => r.querySelector(s);
+const id = location.pathname.split('/').pop();
+let L, lbIndex = 0;
+
+function nextDays(n = 21) {
+  const out = [], d = new Date();
+  d.setDate(d.getDate() + 1);
+  while (out.length < n) {
+    if (d.getDay() !== 0) out.push(d.toISOString().slice(0, 10)); // sem domingos
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+const SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+
+function scheduleForm(prefix) {
+  const days = nextDays();
+  return `
+  <form class="space sched" data-p="${prefix}" novalidate>
+    <div class="fgroup">
+      <label class="field"><span>Data da visita</span>
+        <select name="date" required>${days.map((d) => `<option value="${d}">${new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '')}</option>`).join('')}</select></label>
+      <label class="field"><span>Pessoas</span>
+        <select name="people">${[1, 2, 3, 4].map((n) => `<option value="${n}">${plural(n, 'pessoa', 'pessoas')}</option>`).join('')}</select></label>
+    </div>
+    <div class="slot-label">Horário</div>
+    <div class="slots">${SLOTS.map((s, i) => `<button type="button" class="slot${i === 0 ? ' on' : ''}" data-t="${s}">${s}</button>`).join('')}</div>
+    <input type="hidden" name="time" value="${SLOTS[0]}">
+    <div class="fgroup">
+      <label class="field"><span>Nome completo</span><input name="name" required autocomplete="name"></label>
+      <label class="field"><span>E-mail</span><input name="email" type="email" required autocomplete="email"></label>
+      <label class="field"><span>Telefone / WhatsApp</span><input name="phone" type="tel" required autocomplete="tel" placeholder="+353"></label>
+      <label class="field"><span>Mensagem (opcional)</span><textarea name="message" rows="2" placeholder="Conte um pouco sobre você"></textarea></label>
+    </div>
+    <input class="hp" name="website" tabindex="-1" autocomplete="off">
+    <div class="err" hidden></div>
+    <button class="btn btn-brand btn-block" type="submit">Agendar visita</button>
+    <p class="tiny" style="margin:0">Visita gratuita e sem compromisso</p>
+  </form>`;
+}
+
+function bindForms() {
+  document.querySelectorAll('.sched').forEach((f) => {
+    f.addEventListener('click', (e) => {
+      const s = e.target.closest('.slot'); if (!s) return;
+      f.querySelectorAll('.slot').forEach((x) => x.classList.toggle('on', x === s));
+      f.time.value = s.dataset.t;
+    });
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const err = $('.err', f), btn = $('button[type=submit]', f);
+      const data = Object.fromEntries(new FormData(f));
+      if (!data.name.trim() || !data.email.trim() || !data.phone.trim()) { err.hidden = false; err.textContent = 'Preencha nome, e-mail e telefone.'; return; }
+      if (!/^\S+@\S+\.\S+$/.test(data.email)) { err.hidden = false; err.textContent = 'Confira o e-mail.'; return; }
+      err.hidden = true; btn.disabled = true; btn.textContent = 'Enviando…';
+      try {
+        await api('/api/visits', { method: 'POST', body: { ...data, listing_id: L.id } });
+        const when = new Date(data.date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+        f.outerHTML = `<div class="done"><div class="ok">${I.check}</div><h4>Pedido enviado!</h4>
+          <p>Recebemos seu pedido de visita para <b style="color:#222">${when} às ${esc(data.time)}</b>. Vamos confirmar pelo WhatsApp ou e-mail.</p></div>`;
+      } catch (ex) {
+        err.hidden = false; err.textContent = ex.message; btn.disabled = false; btn.textContent = 'Agendar visita';
+      }
+    });
+  });
+}
+
+function galleryHTML(p) {
+  const n = Math.min(p.length, 5);
+  if (!n) return `<div class="gallery n1"><div style="display:grid;place-items:center;color:#bbb;background:#f7f7f7">${I.house.replace('<svg', '<svg width="64"')}</div></div>`;
+  return `<div class="gallery n${n}">
+    ${p.slice(0, 5).map((src, i) => `<button class="g${i}" data-i="${i}"><img src="${esc(src)}" alt="Foto ${i + 1}"></button>`).join('')}
+    ${p.length > 1 ? `<button class="all" id="showAll">${I.grid} Mostrar todas as fotos</button>` : ''}
+  </div>`;
+}
+
+function render() {
+  document.title = `${L.title} · DNL Management`;
+  const hasBath = L.amenities.includes('Banheiro privativo');
+  const highlights = [
+    [I.key, L.type, L.type.startsWith('Quarto') ? 'Seu quarto com áreas comuns compartilhadas.' : 'O espaço inteiro só para você.'],
+    [I.calendar, availText(L.available_from), L.min_months ? `Contrato mínimo de ${plural(L.min_months, 'mês', 'meses')}.` : 'Contrato flexível.'],
+    L.bills_included ? [I.bolt, 'Contas incluídas', 'Luz, gás e internet já estão no valor do aluguel.'] : [I.bolt, 'Contas à parte', 'As contas são divididas entre os moradores.'],
+  ];
+  const facts = [plural(L.guests || 1, 'pessoa', 'pessoas'), plural(L.bedrooms || 1, 'quarto', 'quartos'), plural(L.bathrooms || 1, hasBath ? 'banheiro privativo' : 'banheiro', hasBath ? 'banheiros privativos' : 'banheiros')].join(' · ');
+
+  $('#page').innerHTML = `
+  <div class="lwrap">
+    <div class="l-title">
+      <h1>${esc(L.title)}</h1>
+      <div class="l-actions">
+        <button class="btn btn-ghost" id="share">${I.share} Compartilhar</button>
+        <button class="btn btn-ghost" id="favBtn"><span style="display:inline-flex;width:16px">${I.heart.replace('<svg', `<svg width="16" style="fill:${favs.has(L.id) ? 'var(--brand)' : 'none'};stroke:#222;stroke-width:2.5"`)}</span> Salvar</button>
+      </div>
+    </div>
+  </div>
+  <div class="lwrap flush">${galleryHTML(L.photos)}</div>
+  <div class="lwrap">
+    <div class="l-body">
+      <div>
+        <div class="sec l-head">
+          <h2>${esc(L.type)} em ${esc(L.area || 'Cork')}</h2>
+          <p>${facts}</p>
+        </div>
+        <div class="sec"><div class="hl">${highlights.map(([ic, b, s]) => `<div>${ic}<span><b>${esc(b)}</b><small>${esc(s)}</small></span></div>`).join('')}</div></div>
+        ${L.description ? `<div class="sec"><h3>Sobre este espaço</h3><div class="desc">${esc(L.description)}</div></div>` : ''}
+        ${L.amenities.length ? `<div class="sec"><h3>O que este lugar oferece</h3>
+          <div class="amen">${L.amenities.map((a) => `<div>${AMENITIES[a] || I.dot}<span>${esc(a)}</span></div>`).join('')}</div></div>` : ''}
+        ${L.house_rules ? `<div class="sec"><h3>Regras da casa</h3><div class="desc">${esc(L.house_rules)}</div></div>` : ''}
+      </div>
+      <div class="bookbox-wrap desktop">
+        <div class="bookbox">
+          <div class="pr"><b>${eur(L.price)}</b><span>mês</span><small>${L.bills_included ? 'contas inclusas' : '+ contas'}</small></div>
+          <div id="schedDesk"></div>
+        </div>
+      </div>
+    </div>
+    <div class="sec" style="border-top:1px solid var(--line)">
+      <h3>Onde você vai morar</h3>
+      ${L.lat && L.lng ? '<div id="map"></div>' : ''}
+      <div class="map-note"><b>${esc(L.area || 'Cork')}, Irlanda</b>
+        <p>A localização exata é enviada após a confirmação da visita.</p></div>
+    </div>
+  </div>
+  <div class="mbar"><div><b>${eur(L.price)}</b> mês<small>${availText(L.available_from)}</small></div>
+    <button class="btn btn-brand" id="openSched">Agendar visita</button></div>`;
+
+  $('#schedDesk').innerHTML = scheduleForm('d');
+  $('#schedMobile').innerHTML = scheduleForm('m');
+  bindForms();
+
+  // Mapa com área aproximada (privacidade)
+  if (L.lat && L.lng) {
+    const m = window.L ? window.L.map('map', { scrollWheelZoom: false }).setView([L.lat, L.lng], 15) : null;
+    if (m) {
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
+      window.L.circle([L.lat, L.lng], { radius: 260, color: '#E0435A', weight: 1.5, fillColor: '#E0435A', fillOpacity: .15 }).addTo(m);
+      window.L.marker([L.lat, L.lng], { icon: window.L.divIcon({ className: '', html: `<div style="width:48px;height:48px;border-radius:50%;background:#E0435A;display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px rgba(0,0,0,.25)">${I.house.replace('<svg', '<svg width="24" height="24" style="stroke:#fff"')}</div>`, iconSize: [48, 48], iconAnchor: [24, 24] }) }).addTo(m);
+    }
+  }
+
+  // Ações
+  $('#share').onclick = async () => {
+    try { if (navigator.share) await navigator.share({ title: L.title, url: location.href }); else { await navigator.clipboard.writeText(location.href); toast('Link copiado'); } } catch {}
+  };
+  $('#favBtn').onclick = () => { const on = favs.toggle(L.id); $('#favBtn svg').style.fill = on ? 'var(--brand)' : 'none'; toast(on ? 'Salvo nos favoritos' : 'Removido dos favoritos'); };
+  $('#openSched').onclick = () => $('#schedModal').classList.add('open');
+  document.querySelectorAll('[data-close]').forEach((b) => { b.innerHTML = I.x; b.onclick = () => b.closest('.modal').classList.remove('open'); });
+  $('#schedModal').onclick = (e) => { if (e.target.id === 'schedModal') e.currentTarget.classList.remove('open'); };
+
+  // Fotos
+  $('#allList').innerHTML = L.photos.map((p, i) => `<img src="${esc(p)}" data-i="${i}" alt="Foto ${i + 1}" loading="lazy">`).join('');
+  $('#closeAll').innerHTML = I.left.replace('<svg', '<svg width="16" height="16"');
+  const openAll = () => { $('#allPhotos').classList.add('open'); document.body.style.overflow = 'hidden'; };
+  $('#closeAll').onclick = () => { $('#allPhotos').classList.remove('open'); document.body.style.overflow = ''; };
+  if ($('#showAll')) $('#showAll').onclick = (e) => { e.stopPropagation(); openAll(); };
+  document.querySelectorAll('.gallery button[data-i]').forEach((b) => b.onclick = () => (L.photos.length > 1 ? openAll() : openLb(0)));
+  $('#allList').onclick = (e) => { const im = e.target.closest('img'); if (im) openLb(+im.dataset.i); };
+}
+
+function openLb(i) {
+  lbIndex = (i + L.photos.length) % L.photos.length;
+  $('#lbi').src = L.photos[lbIndex]; $('#lbt').textContent = `${lbIndex + 1} / ${L.photos.length}`;
+  $('#lb').classList.add('open'); document.body.style.overflow = 'hidden';
+}
+$('#lbx').innerHTML = I.x.replace('stroke="currentColor"', 'stroke="#fff"') + ' Fechar';
+$('#lbp').innerHTML = I.left.replace('<svg', '<svg width="16" height="16"');
+$('#lbn').innerHTML = I.right.replace('<svg', '<svg width="16" height="16"');
+$('#lbx').onclick = () => { $('#lb').classList.remove('open'); if (!$('#allPhotos').classList.contains('open')) document.body.style.overflow = ''; };
+$('#lbp').onclick = () => openLb(lbIndex - 1);
+$('#lbn').onclick = () => openLb(lbIndex + 1);
+document.addEventListener('keydown', (e) => {
+  if (!$('#lb').classList.contains('open')) return;
+  if (e.key === 'Escape') $('#lbx').click(); if (e.key === 'ArrowLeft') openLb(lbIndex - 1); if (e.key === 'ArrowRight') openLb(lbIndex + 1);
+});
+
+api('/api/listings/' + id).then((r) => { L = r; render(); }).catch(() => {
+  $('#page').innerHTML = `<div class="lwrap empty"><h2>Anúncio não encontrado</h2><p>Ele pode ter sido removido.</p><p style="margin-top:20px"><a class="btn btn-dark" href="/">Ver todos os espaços</a></p></div>`;
+});
+</script>
+</body>
+</html>

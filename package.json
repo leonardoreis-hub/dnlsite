@@ -1,0 +1,22 @@
+{
+  "name": "dnl-management-site",
+  "version": "1.0.0",
+  "description": "Site de quartos com agendamento de visitas e admin",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "express": "^5.3.0",
+    "express-session": "^1.19.0",
+    "multer": "^2.5.0",
+    "nodemailer": "^10.3.1",
+    "sharp": "^0.35.5"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true
+}

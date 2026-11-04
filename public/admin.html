@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Admin · DNL Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  body { background: var(--bg-soft); }
+  .login { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+  .login .box { background: #fff; border-radius: 16px; box-shadow: var(--shadow); width: 100%; max-width: 420px; padding: 32px; }
+  .login h1 { font-size: 22px; margin: 24px 0 4px; } .login p { color: var(--muted); margin: 0 0 24px; }
+  .adm-h { background: #fff; border-bottom: 1px solid var(--line-soft); position: sticky; top: 0; z-index: 30; }
+  .adm-h .wrap { display: flex; align-items: center; justify-content: space-between; height: 72px; gap: 12px; }
+  .tabs { display: flex; gap: 4px; }
+  .tab { border: 0; background: none; padding: 10px 14px; border-radius: 20px; font-weight: 600; color: var(--muted); }
+  .tab.on { background: var(--bg-soft); color: var(--ink); }
+  .tab .n { background: var(--brand); color: #fff; border-radius: 10px; font-size: 11px; padding: 1px 6px; margin-left: 4px; }
+  .adm { padding-top: 32px; padding-bottom: 80px; }
+  .adm-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+  .adm-top h1 { font-size: 28px; margin: 0; }
+  .notice { background: #FFF8E6; border: 1px solid #F5D98B; color: #6B4E00; border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; font-size: 14px; }
+  .notice.ok { background: #EDF7ED; border-color: #B7DFB9; color: #1E4620; }
+  .rows { background: #fff; border-radius: 16px; border: 1px solid var(--line-soft); overflow: hidden; }
+  .row { display: grid; grid-template-columns: 96px 1fr auto; gap: 16px; align-items: center; padding: 14px 16px; border-top: 1px solid var(--line-soft); }
+  .row:first-child { border-top: 0; }
+  .row .th { width: 96px; height: 72px; border-radius: 8px; object-fit: cover; background: var(--bg-soft); }
+  .row b { display: block; } .row small { color: var(--muted); }
+  .row .acts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .chip { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 12px; background: #EDF7ED; color: #1E4620; }
+  .chip.off { background: #EEE; color: #555; }
+  .chip.new { background: #FDECEF; color: var(--brand-dark); }
+  @media (max-width: 640px) { .row { grid-template-columns: 64px 1fr; } .row .th { width: 64px; height: 56px; } .row .acts { grid-column: 1/-1; justify-content: flex-start; } }
+  .ed .sheet { max-width: 820px; }
+  .ed .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ed .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 600px) { .ed .grid2, .ed .grid3 { grid-template-columns: 1fr; } }
+  .ed h4 { margin: 28px 0 12px; font-size: 16px; }
+  .ed h4:first-child { margin-top: 0; }
+  .ed .stack { display: grid; gap: 12px; }
+  .drop { border: 2px dashed var(--line); border-radius: 12px; padding: 28px; text-align: center; color: var(--muted); cursor: pointer; transition: .15s; }
+  .drop.over, .drop:hover { border-color: var(--ink); color: var(--ink); background: var(--bg-soft); }
+  .ph { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-top: 12px; }
+  .ph .it { position: relative; aspect-ratio: 4/3; border-radius: 8px; overflow: hidden; background: var(--bg-soft); }
+  .ph img { width: 100%; height: 100%; object-fit: cover; }
+  .ph .cover { position: absolute; top: 6px; left: 6px; background: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+  .ph .ctl { position: absolute; bottom: 6px; right: 6px; display: flex; gap: 4px; }
+  .ph .ctl button { width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(255,255,255,.95); display: grid; place-items: center; font-size: 14px; font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .am { display: flex; flex-wrap: wrap; gap: 8px; }
+  .am label { border: 1px solid var(--line); border-radius: 20px; padding: 8px 14px; font-size: 14px; cursor: pointer; user-select: none; }
+  .am input { display: none; }
+  .am label:has(input:checked) { border-color: var(--ink); background: var(--ink); color: #fff; }
+  #pickMap { height: 260px; border-radius: 12px; margin-top: 12px; }
+  .switch { display: flex; align-items: center; gap: 10px; font-weight: 600; cursor: pointer; }
+  .switch input { width: 40px; height: 24px; appearance: none; background: #B0B0B0; border-radius: 12px; position: relative; transition: .2s; cursor: pointer; margin: 0; }
+  .switch input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: .2s; }
+  .switch input:checked { background: var(--ink); } .switch input:checked::after { left: 18px; }
+  .ed-f { position: sticky; bottom: 0; background: #fff; border-top: 1px solid var(--line-soft); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .vis { background: #fff; border-radius: 16px; border: 1px solid var(--line-soft); padding: 18px; display: grid; gap: 6px; margin-bottom: 12px; }
+  .vis .top { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .vis .when { font-weight: 700; font-size: 16px; }
+  .vis .meta { color: var(--ink-2); font-size: 14px; }
+  .vis .meta a { color: var(--ink); }
+  .vis .msg { background: var(--bg-soft); border-radius: 8px; padding: 10px 12px; font-size: 14px; margin-top: 4px; white-space: pre-line; }
+  .vis select { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/js/common.js"></script>
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const app = $('#app');
+let listings = [], visits = [], tab = 'listings', editing = null, status = {};
+
+// ---------- Login ----------
+function loginView() {
+  app.innerHTML = `
+  <div class="login"><form class="box" id="lf">
+    <a class="logo" href="/">${LOGO}<span>DNL<small>Management</small></span></a>
+    <h1>Área administrativa</h1><p>Entre para gerenciar seus anúncios.</p>
+    <div class="fgroup">
+      <label class="field"><span>Usuário</span><input name="user" autocomplete="username" required></label>
+      <label class="field"><span>Senha</span><input name="password" type="password" autocomplete="current-password" required></label>
+    </div>
+    <div class="err" id="le" hidden style="margin-top:12px"></div>
+    <button class="btn btn-brand btn-block" style="margin-top:16px">Entrar</button>
+  </form></div>`;
+  $('#lf').onsubmit = async (e) => {
+    e.preventDefault();
+    try { await api('/api/login', { method: 'POST', body: Object.fromEntries(new FormData(e.target)) }); boot(); }
+    catch (ex) { $('#le').hidden = false; $('#le').textContent = ex.message; }
+  };
+}
+
+// ---------- Shell ----------
+function shell() {
+  const nNew = visits.filter((v) => v.status === 'novo').length;
+  app.innerHTML = `
+  <header class="adm-h"><div class="wrap">
+    <a class="logo" href="/" target="_blank">${LOGO}<span>DNL<small>Admin</small></span></a>
+    <div class="tabs">
+      <button class="tab${tab === 'listings' ? ' on' : ''}" data-t="listings">Anúncios</button>
+      <button class="tab${tab === 'visits' ? ' on' : ''}" data-t="visits">Visitas${nNew ? `<span class="n">${nNew}</span>` : ''}</button>
+    </div>
+    <button class="btn btn-ghost" id="logout">Sair</button>
+  </div></header>
+  <main class="wrap adm" id="main"></main>
+  <div class="modal ed" id="ed"><div class="sheet" id="edSheet"></div></div>`;
+  document.querySelectorAll('.tab').forEach((b) => b.onclick = () => { tab = b.dataset.t; shell(); });
+  $('#logout').onclick = async () => { await api('/api/logout', { method: 'POST' }); loginView(); };
+  tab === 'listings' ? listingsView() : visitsView();
+}
+
+function listingsView() {
+  $('#main').innerHTML = `
+  ${!status.emailConfigured ? `<div class="notice"><b>E-mail ainda não configurado.</b> Os pedidos de visita ficam salvos na aba Visitas, mas não chegam no seu e-mail até você preencher o SMTP no arquivo .env (veja o LEIA-ME).</div>`
+    : `<div class="notice ok">Pedidos de visita estão sendo enviados para <b>${esc(status.notifyEmail)}</b>. <button class="btn btn-ghost btn-sm" id="testMail">Enviar e-mail de teste</button></div>`}
+  <div class="adm-top"><h1>Seus anúncios</h1><button class="btn btn-dark" id="new">+ Criar anúncio</button></div>
+  <div class="rows">${listings.length ? listings.map((l) => `
+    <div class="row">
+      ${l.photos[0] ? `<img class="th" src="${esc(l.photos[0])}" alt="">` : '<div class="th"></div>'}
+      <div><b>${esc(l.title)}</b><small>${esc(l.type)} · ${esc(l.area || '—')} · ${eur(l.price)}/mês · ${plural(l.photos.length, 'foto', 'fotos')}</small>
+        <div style="margin-top:6px"><span class="chip${l.published ? '' : ' off'}">${l.published ? 'Publicado' : 'Rascunho'}</span></div></div>
+      <div class="acts">
+        <a class="btn btn-ghost btn-sm" href="/anuncio/${l.id}" target="_blank">Ver</a>
+        <button class="btn btn-outline btn-sm" data-edit="${l.id}">Editar</button>
+        <button class="btn btn-ghost btn-sm" data-del="${l.id}" style="color:#C13515">Excluir</button>
+      </div>
+    </div>`).join('') : '<div class="empty"><h2>Nenhum anúncio ainda</h2><p>Crie o primeiro para ele aparecer no site.</p></div>'}
+  </div>`;
+  $('#new').onclick = () => openEditor();
+  if ($('#testMail')) $('#testMail').onclick = async () => { try { await api('/api/admin/test-email', { method: 'POST' }); toast('E-mail de teste enviado'); } catch (e) { toast('Falhou: ' + e.message); } };
+  document.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () => openEditor(listings.find((l) => l.id == b.dataset.edit)));
+  document.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => {
+    const l = listings.find((x) => x.id == b.dataset.del);
+    if (!confirm(`Excluir "${l.title}"? As fotos também serão apagadas.`)) return;
+    await api('/api/admin/listings/' + l.id, { method: 'DELETE' }); await load(); shell(); toast('Anúncio excluído');
+  });
+}
+
+function visitsView() {
+  const st = { novo: 'Novo', confirmado: 'Confirmado', realizado: 'Realizado', cancelado: 'Cancelado' };
+  $('#main').innerHTML = `
+  <div class="adm-top"><h1>Pedidos de visita</h1></div>
+  ${visits.length ? visits.map((v) => `
+    <div class="vis">
+      <div class="top">
+        <span class="when">${new Date(v.date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' })} às ${esc(v.time)}</span>
+        <span style="display:flex;gap:8px;align-items:center">
+          ${v.status === 'novo' ? '<span class="chip new">Novo</span>' : ''}
+          <select data-st="${v.id}">${Object.entries(st).map(([k, t]) => `<option value="${k}"${v.status === k ? ' selected' : ''}>${t}</option>`).join('')}</select>
+          <button class="btn btn-ghost btn-sm" data-vdel="${v.id}" style="color:#C13515">Excluir</button>
+        </span>
+      </div>
+      <div><b>${esc(v.name)}</b> · ${plural(v.people, 'pessoa', 'pessoas')} · <span style="color:var(--muted)">${esc(v.listing_title)}</span></div>
+      <div class="meta"><a href="mailto:${esc(v.email)}">${esc(v.email)}</a> · <a href="https://wa.me/${esc(v.phone.replace(/\D/g, ''))}" target="_blank">${esc(v.phone)}</a>
+        · <small style="color:var(--muted)">recebido ${new Date(v.created_at.replace(' ', 'T') + 'Z').toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}${v.email_sent ? ' · e-mail enviado' : ''}</small></div>
+      ${v.message ? `<div class="msg">${esc(v.message)}</div>` : ''}
+    </div>`).join('') : '<div class="rows"><div class="empty"><h2>Nenhum pedido ainda</h2><p>Quando alguém agendar uma visita, aparece aqui.</p></div></div>'}`;
+  document.querySelectorAll('[data-st]').forEach((s) => s.onchange = async () => {
+    await api('/api/admin/visits/' + s.dataset.st, { method: 'PUT', body: { status: s.value } });
+    visits.find((v) => v.id == s.dataset.st).status = s.value; shell();
+  });
+  document.querySelectorAll('[data-vdel]').forEach((b) => b.onclick = async () => {
+    if (!confirm('Excluir este pedido?')) return;
+    await api('/api/admin/visits/' + b.dataset.vdel, { method: 'DELETE' }); await load(); shell();
+  });
+}
+
+// ---------- Editor ----------
+const BLANK = { title: '', type: 'Quarto privativo', area: '', address: '', lat: null, lng: null, price: '', bills_included: true, available_from: '', min_months: 6, guests: 1, bedrooms: 1, bathrooms: 1, description: '', amenities: ['Wi-Fi', 'Cozinha', 'Máquina de lavar', 'Aquecimento', 'Mobiliado'], house_rules: '', photos: [], published: true };
+let pickMap, pickMarker;
+
+function openEditor(l) {
+  editing = JSON.parse(JSON.stringify(l || BLANK));
+  const e = editing;
+  $('#edSheet').innerHTML = `
+  <div class="sheet-h"><button class="x" id="edX" aria-label="Fechar">${I.x}</button>${l ? 'Editar anúncio' : 'Novo anúncio'}</div>
+  <form class="sheet-b" id="ef" novalidate>
+    <h4>Fotos</h4>
+    <div class="drop" id="drop"><b style="color:var(--ink)">Clique ou arraste as fotos aqui</b><br><small>A primeira foto é a capa. JPG, PNG ou HEIC até 15 MB cada.</small>
+      <input type="file" id="fi" accept="image/*" multiple hidden></div>
+    <div class="ph" id="ph"></div>
+
+    <h4>Informações básicas</h4>
+    <div class="stack">
+      <label class="field"><span>Título do anúncio</span><input name="title" value="${esc(e.title)}" placeholder="Ex.: Quarto duplo iluminado perto da UCC" required></label>
+      <div class="grid2">
+        <label class="field"><span>Tipo de espaço</span><select name="type">${TYPES.slice(1).map((t) => `<option${t.k === e.type ? ' selected' : ''}>${t.k}</option>`).join('')}</select></label>
+        <label class="field"><span>Bairro / região</span><input name="area" value="${esc(e.area)}" placeholder="Ex.: Douglas, Cork"></label>
+      </div>
+      <div class="grid3">
+        <label class="field"><span>Aluguel mensal (€)</span><input name="price" type="number" min="0" value="${esc(e.price)}"></label>
+        <label class="field"><span>Disponível a partir de</span><input name="available_from" type="date" value="${esc(e.available_from)}"></label>
+        <label class="field"><span>Contrato mínimo (meses)</span><input name="min_months" type="number" min="0" value="${esc(e.min_months)}"></label>
+      </div>
+      <div class="grid3">
+        <label class="field"><span>Pessoas</span><input name="guests" type="number" min="1" value="${esc(e.guests)}"></label>
+        <label class="field"><span>Quartos</span><input name="bedrooms" type="number" min="0" value="${esc(e.bedrooms)}"></label>
+        <label class="field"><span>Banheiros</span><input name="bathrooms" type="number" min="0" step="0.5" value="${esc(e.bathrooms)}"></label>
+      </div>
+      <label class="switch"><input type="checkbox" name="bills_included"${e.bills_included ? ' checked' : ''}> Contas incluídas no aluguel</label>
+    </div>
+
+    <h4>Descrição</h4>
+    <div class="stack">
+      <label class="field"><span>Sobre o espaço</span><textarea name="description" rows="6" placeholder="Descreva o quarto, a casa, quem mora lá, transporte, comércio por perto…">${esc(e.description)}</textarea></label>
+      <label class="field"><span>Regras da casa (opcional)</span><textarea name="house_rules" rows="3" placeholder="Ex.: Não fumantes. Sem animais. Visitas até 22h.">${esc(e.house_rules)}</textarea></label>
+    </div>
+
+    <h4>Comodidades</h4>
+    <div class="am">${Object.keys(AMENITIES).map((a) => `<label><input type="checkbox" name="am" value="${esc(a)}"${e.amenities.includes(a) ? ' checked' : ''}>${esc(a)}</label>`).join('')}</div>
+
+    <h4>Localização</h4>
+    <div class="stack">
+      <div style="display:flex;gap:8px">
+        <label class="field" style="flex:1"><span>Endereço (não aparece no site)</span><input name="address" value="${esc(e.address)}" placeholder="Ex.: 12 Main Street, Douglas, Cork"></label>
+        <button type="button" class="btn btn-outline btn-sm" id="geo">Localizar</button>
+      </div>
+      <small style="color:var(--muted)">No site aparece só um círculo aproximado. Clique no mapa para ajustar o ponto.</small>
+    </div>
+    <div id="pickMap"></div>
+    <div style="height:24px"></div>
+  </form>
+  <div class="ed-f">
+    <label class="switch"><input type="checkbox" id="pub"${e.published ? ' checked' : ''}> Publicado no site</label>
+    <span style="display:flex;gap:8px"><button class="btn btn-ghost" id="edCancel">Cancelar</button><button class="btn btn-dark" id="save">Salvar</button></span>
+  </div>`;
+  $('#ed').classList.add('open'); document.body.style.overflow = 'hidden';
+  const close = () => { $('#ed').classList.remove('open'); document.body.style.overflow = ''; };
+  $('#edX').onclick = close; $('#edCancel').onclick = close;
+  renderPhotos();
+
+  // Upload
+  const drop = $('#drop'), fi = $('#fi');
+  drop.onclick = () => fi.click();
+  fi.onchange = () => uploadFiles(fi.files);
+  drop.ondragover = (ev) => { ev.preventDefault(); drop.classList.add('over'); };
+  drop.ondragleave = () => drop.classList.remove('over');
+  drop.ondrop = (ev) => { ev.preventDefault(); drop.classList.remove('over'); uploadFiles(ev.dataTransfer.files); };
+
+  // Mapa
+  setTimeout(() => {
+    if (!window.L) { $('#pickMap').innerHTML = '<div class="empty" style="padding:40px">Mapa indisponível agora</div>'; return; }
+    const c = e.lat && e.lng ? [e.lat, e.lng] : [51.8985, -8.4756];
+    pickMap = window.L.map('pickMap').setView(c, e.lat ? 15 : 12);
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(pickMap);
+    pickMarker = e.lat ? window.L.marker(c).addTo(pickMap) : null;
+    pickMap.on('click', (ev) => setPoint(ev.latlng.lat, ev.latlng.lng));
+  }, 50);
+  $('#geo').onclick = async () => {
+    if (!pickMap) return toast('Mapa indisponível');
+    const q = $('#ef').address.value.trim(); if (!q) return toast('Digite o endereço primeiro');
+    try {
+      const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q)).then((x) => x.json());
+      if (!r[0]) return toast('Endereço não encontrado — clique no mapa');
+      setPoint(+r[0].lat, +r[0].lon); pickMap.setView([+r[0].lat, +r[0].lon], 16);
+    } catch { toast('Não foi possível buscar — clique no mapa'); }
+  };
+  $('#save').onclick = save;
+}
+function setPoint(lat, lng) {
+  editing.lat = +lat.toFixed(6); editing.lng = +lng.toFixed(6);
+  if (pickMarker) pickMarker.setLatLng([lat, lng]); else pickMarker = window.L.marker([lat, lng]).addTo(pickMap);
+}
+function renderPhotos() {
+  const p = editing.photos;
+  $('#ph').innerHTML = p.map((src, i) => `
+    <div class="it"><img src="${esc(src)}" alt="">${i === 0 ? '<span class="cover">Capa</span>' : ''}
+      <div class="ctl">
+        ${i > 0 ? `<button type="button" data-mv="${i}" data-d="-1" title="Mover para trás">‹</button>` : ''}
+        ${i < p.length - 1 ? `<button type="button" data-mv="${i}" data-d="1" title="Mover para frente">›</button>` : ''}
+        <button type="button" data-rm="${i}" title="Remover">×</button>
+      </div></div>`).join('');
+  $('#ph').querySelectorAll('[data-mv]').forEach((b) => b.onclick = () => {
+    const i = +b.dataset.mv, j = i + +b.dataset.d; [p[i], p[j]] = [p[j], p[i]]; renderPhotos();
+  });
+  $('#ph').querySelectorAll('[data-rm]').forEach((b) => b.onclick = () => { p.splice(+b.dataset.rm, 1); renderPhotos(); });
+}
+async function uploadFiles(files) {
+  if (!files.length) return;
+  const fd = new FormData(); [...files].forEach((f) => fd.append('photos', f));
+  const drop = $('#drop'); const old = drop.innerHTML; drop.innerHTML = `<b style="color:var(--ink)">Enviando ${files.length} foto(s)…</b>`;
+  try { const r = await api('/api/admin/upload', { method: 'POST', body: fd }); editing.photos.push(...r.urls); renderPhotos(); }
+  catch (e) { toast('Erro no upload: ' + e.message); }
+  drop.innerHTML = old; $('#fi').onchange = () => uploadFiles($('#fi').files);
+}
+async function save() {
+  const f = $('#ef'), d = Object.fromEntries(new FormData(f));
+  if (!d.title.trim()) { f.title.focus(); return toast('Dê um título ao anúncio'); }
+  const body = {
+    ...d, bills_included: f.bills_included.checked, published: $('#pub').checked,
+    amenities: [...f.querySelectorAll('[name=am]:checked')].map((x) => x.value),
+    photos: editing.photos, lat: editing.lat, lng: editing.lng,
+  };
+  delete body.am;
+  const btn = $('#save'); btn.disabled = true; btn.textContent = 'Salvando…';
+  try {
+    if (editing.id) await api('/api/admin/listings/' + editing.id, { method: 'PUT', body });
+    else await api('/api/admin/listings', { method: 'POST', body });
+    $('#ed').classList.remove('open'); document.body.style.overflow = '';
+    await load(); shell(); toast('Anúncio salvo');
+  } catch (e) { toast(e.message); btn.disabled = false; btn.textContent = 'Salvar'; }
+}
+
+async function load() {
+  [listings, visits, status] = await Promise.all([api('/api/admin/listings'), api('/api/admin/visits'), api('/api/admin/status')]);
+}
+async function boot() {
+  try { await load(); shell(); } catch (e) { if (e.status === 401) loginView(); else app.innerHTML = '<div class="empty"><h2>Erro ao carregar</h2></div>'; }
+}
+boot();
+</script>
+</body>
+</html>
