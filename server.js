@@ -8,6 +8,7 @@ const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
 const sharp = require('sharp');
+const heicConvert = require('heic-convert');
 const Database = require('better-sqlite3');
 const nodemailer = require('nodemailer');
 
@@ -221,11 +222,17 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 
 app.post('/api/admin/upload', requireAdmin, upload.array('photos', 30), async (req, res) => {
   const urls = [];
   for (const f of req.files || []) {
-    if (!/^image\//.test(f.mimetype)) continue;
-    const name = `${Date.now()}-${crypto.randomBytes(5).toString('hex')}.jpg`;
-    await sharp(f.buffer).rotate().resize({ width: 1800, height: 1800, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 82, mozjpeg: true }).toFile(path.join(UPLOAD_DIR, name));
-    urls.push('/uploads/' + name);
+    const isHeic = /heic|heif/i.test(f.mimetype) || /\.(heic|heif)$/i.test(f.originalname || '');
+    if (!/^image\//.test(f.mimetype) && !isHeic) continue;
+    let buf = f.buffer;
+    try {
+      // Fotos de iPhone (HEIC): converte para JPEG antes de processar
+      if (isHeic) buf = Buffer.from(await heicConvert({ buffer: buf, format: 'JPEG', quality: 0.9 }));
+      const name = `${Date.now()}-${crypto.randomBytes(5).toString('hex')}.jpg`;
+      await sharp(buf).rotate().resize({ width: 1800, height: 1800, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 82, mozjpeg: true }).toFile(path.join(UPLOAD_DIR, name));
+      urls.push('/uploads/' + name);
+    } catch (e) { console.error('Falha ao processar foto:', f.originalname, e.message); }
   }
   res.json({ urls });
 });
