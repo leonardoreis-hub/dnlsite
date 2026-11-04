@@ -66,7 +66,7 @@ const availText = (iso) => {
 };
 const plural = (n, a, b) => `${n} ${n == 1 ? a : b}`;
 
-const LOGO = `<svg viewBox="0 0 32 32" fill="none"><path d="M16 3 3 13.5V29h9v-8h8v8h9V13.5z" fill="currentColor"/><path d="M16 9.5 9 15v9h3v-6h8v6h3v-9z" fill="#fff"/></svg>`;
+const LOGO = `<img src="/img/dnl-icon.svg" alt="" width="40" height="40">`;
 
 async function api(url, opts = {}) {
   const r = await fetch(url, { headers: opts.body && !(opts.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}, ...opts,
@@ -98,7 +98,7 @@ const favs = {
 function headerHTML({ search = false } = {}) {
   return `
   <header class="header"><div class="wrap">
-    <a class="logo" href="/">${LOGO}<span>DNL<small>Management</small></span></a>
+    <a class="logo" href="/" aria-label="DNL Management">${LOGO}<span>DNL Management</span></a>
     ${search ? `
     <form class="search" id="search" onsubmit="return false">
       <div class="seg" style="flex:1.4"><label for="q">Onde</label><input id="q" placeholder="Buscar bairro ou endereço" autocomplete="off"></div>

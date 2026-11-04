@@ -32,9 +32,10 @@ input, select, textarea { font: inherit; color: inherit; }
 /* ---------- Header ---------- */
 .header { position: sticky; top: 0; z-index: 50; background: #fff; border-bottom: 1px solid var(--line-soft); }
 .header .wrap { display: flex; align-items: center; justify-content: space-between; height: 80px; gap: 16px; }
-.logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--brand); font-weight: 800; font-size: 22px; letter-spacing: -.5px; white-space: nowrap; }
-.logo svg { width: 32px; height: 32px; }
-.logo span small { color: var(--ink); font-weight: 600; font-size: 13px; display: block; letter-spacing: 0; margin-top: -4px; }
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #0A0A0A; font-weight: 700; font-size: 20px; letter-spacing: -.3px; white-space: nowrap; }
+.logo img { width: 40px; height: 40px; border-radius: 9px; box-shadow: 0 0 0 1px var(--line-soft); }
+.logo span small { color: var(--muted); font-weight: 600; font-size: 12px; display: block; letter-spacing: 0; margin-top: -2px; }
+@media (max-width: 380px) { .logo span { font-size: 17px; } }
 .header-right { display: flex; align-items: center; gap: 8px; }
 .pill-link { text-decoration: none; font-weight: 600; font-size: 14px; padding: 12px; border-radius: 22px; }
 .pill-link:hover { background: var(--bg-soft); }
@@ -233,3 +234,4 @@ input, select, textarea { font: inherit; color: inherit; }
 
 .toast { position: fixed; bottom: 24px; left: 24px; z-index: 200; background: var(--ink); color: #fff; padding: 14px 20px; border-radius: 8px; font-size: 14px; box-shadow: var(--shadow); transform: translateY(120px); transition: transform .3s; }
 .toast.show { transform: none; }
+@media (max-width: 560px) { .header .search .seg:not(:first-child) { display: none; } }

@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="/css/style.css">
+<link rel="icon" type="image/svg+xml" href="/img/dnl-icon.svg">
 <style>
   body { background: var(--bg-soft); }
   .login { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
@@ -83,7 +84,7 @@ let listings = [], visits = [], tab = 'listings', editing = null, status = {};
 function loginView() {
   app.innerHTML = `
   <div class="login"><form class="box" id="lf">
-    <a class="logo" href="/">${LOGO}<span>DNL<small>Management</small></span></a>
+    <a class="logo" href="/">${LOGO}<span>DNL Management</span></a>
     <h1>Área administrativa</h1><p>Entre para gerenciar seus anúncios.</p>
     <div class="fgroup">
       <label class="field"><span>Usuário</span><input name="user" autocomplete="username" required></label>
@@ -104,7 +105,7 @@ function shell() {
   const nNew = visits.filter((v) => v.status === 'novo').length;
   app.innerHTML = `
   <header class="adm-h"><div class="wrap">
-    <a class="logo" href="/" target="_blank">${LOGO}<span>DNL<small>Admin</small></span></a>
+    <a class="logo" href="/" target="_blank">${LOGO}<span>DNL Management<small>Admin</small></span></a>
     <div class="tabs">
       <button class="tab${tab === 'listings' ? ' on' : ''}" data-t="listings">Anúncios</button>
       <button class="tab${tab === 'visits' ? ' on' : ''}" data-t="visits">Visitas${nNew ? `<span class="n">${nNew}</span>` : ''}</button>
