@@ -43,30 +43,27 @@ const $ = (s, r = document) => r.querySelector(s);
 const id = location.pathname.split('/').pop();
 let L, lbIndex = 0;
 
-function nextDays(n = 21) {
-  const out = [], d = new Date();
-  d.setDate(d.getDate() + 1);
-  while (out.length < n) {
-    if (d.getDay() !== 0) out.push(d.toISOString().slice(0, 10)); // sem domingos
-    d.setDate(d.getDate() + 1);
-  }
-  return out;
-}
-const SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+// Horários livres vêm da agenda configurada no admin
+let AV = [];
+const slotsHTML = (date) => {
+  const d = AV.find((x) => x.date === date);
+  return (d ? d.times : []).map((s, i) => `<button type="button" class="slot${i === 0 ? ' on' : ''}" data-t="${s}">${s}</button>`).join('');
+};
 
 function scheduleForm(prefix) {
-  const days = nextDays();
+  if (!AV.length) return `<div class="done"><p>No momento não há horários livres para visita.<br>Fale com a gente pelo WhatsApp para combinar outro dia.</p></div>`;
+  const first = AV[0];
   return `
   <form class="space sched" data-p="${prefix}" novalidate>
     <div class="fgroup">
       <label class="field"><span>Data da visita</span>
-        <select name="date" required>${days.map((d) => `<option value="${d}">${new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '')}</option>`).join('')}</select></label>
+        <select name="date" required>${AV.map((d) => `<option value="${d.date}">${new Date(d.date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '')}</option>`).join('')}</select></label>
       <label class="field"><span>Pessoas</span>
         <select name="people">${[1, 2, 3, 4].map((n) => `<option value="${n}">${plural(n, 'pessoa', 'pessoas')}</option>`).join('')}</select></label>
     </div>
     <div class="slot-label">Horário</div>
-    <div class="slots">${SLOTS.map((s, i) => `<button type="button" class="slot${i === 0 ? ' on' : ''}" data-t="${s}">${s}</button>`).join('')}</div>
-    <input type="hidden" name="time" value="${SLOTS[0]}">
+    <div class="slots">${slotsHTML(first.date)}</div>
+    <input type="hidden" name="time" value="${first.times[0]}">
     <div class="fgroup">
       <label class="field"><span>Nome completo</span><input name="name" required autocomplete="name"></label>
       <label class="field"><span>E-mail</span><input name="email" type="email" required autocomplete="email"></label>
@@ -82,6 +79,11 @@ function scheduleForm(prefix) {
 
 function bindForms() {
   document.querySelectorAll('.sched').forEach((f) => {
+    f.date.addEventListener('change', () => {
+      $('.slots', f).innerHTML = slotsHTML(f.date.value);
+      const d = AV.find((x) => x.date === f.date.value);
+      f.time.value = d ? d.times[0] : '';
+    });
     f.addEventListener('click', (e) => {
       const s = e.target.closest('.slot'); if (!s) return;
       f.querySelectorAll('.slot').forEach((x) => x.classList.toggle('on', x === s));
@@ -100,6 +102,9 @@ function bindForms() {
         f.outerHTML = `<div class="done"><div class="ok">${I.check}</div><h4>Pedido enviado!</h4>
           <p>Recebemos seu pedido de visita para <b style="color:#222">${when} às ${esc(data.time)}</b>. Vamos confirmar pelo WhatsApp ou e-mail.</p></div>`;
       } catch (ex) {
+        if (ex.status === 409) { // horário ocupado: atualiza a lista
+          try { AV = (await api('/api/schedule/' + L.id)).available || []; $('.slots', f).innerHTML = slotsHTML(f.date.value); const d = AV.find((x) => x.date === f.date.value); f.time.value = d ? d.times[0] : ''; } catch {}
+        }
         err.hidden = false; err.textContent = ex.message; btn.disabled = false; btn.textContent = 'Agendar visita';
       }
     });
@@ -215,7 +220,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') $('#lbx').click(); if (e.key === 'ArrowLeft') openLb(lbIndex - 1); if (e.key === 'ArrowRight') openLb(lbIndex + 1);
 });
 
-api('/api/listings/' + id).then((r) => { L = r; render(); }).catch(() => {
+Promise.all([api('/api/listings/' + id), api('/api/schedule/' + id).catch(() => ({ available: [] }))]).then(([r, s]) => { L = r; AV = s.available || []; render(); }).catch(() => {
   $('#page').innerHTML = `<div class="lwrap empty"><h2>Anúncio não encontrado</h2><p>Ele pode ter sido removido.</p><p style="margin-top:20px"><a class="btn btn-dark" href="/">Ver todos os espaços</a></p></div>`;
 });
 </script>

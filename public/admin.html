@@ -68,6 +68,28 @@
   .vis .meta a { color: var(--ink); }
   .vis .msg { background: var(--bg-soft); border-radius: 8px; padding: 10px 12px; font-size: 14px; margin-top: 4px; white-space: pre-line; }
   .vis select { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff; }
+  @media (max-width: 640px) {
+    .adm-h .wrap { flex-wrap: wrap; height: auto; padding-top: 10px; padding-bottom: 8px; row-gap: 6px; }
+    .adm-h .tabs { order: 3; width: 100%; overflow-x: auto; }
+    .adm-top h1 { font-size: 24px; }
+  }
+  .wd { padding: 16px 18px; border-top: 1px solid var(--line-soft); }
+  .wd:first-child { border-top: 0; }
+  .wd-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .wd-h small { color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .chip-t { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 18px; padding: 5px 6px 5px 12px; font-size: 14px; font-weight: 600; background: #fff; }
+  .chip-t button { border: 0; background: var(--bg-soft); width: 22px; height: 22px; border-radius: 50%; font-size: 15px; line-height: 1; color: var(--muted); }
+  .chip-t button:hover { background: #FDECEF; color: #C13515; }
+  .addt { display: inline-flex; align-items: center; gap: 2px; }
+  .addt input, .gen input, .gen select, .rule input, .inp { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff; }
+  .rule input { width: 70px; margin: 0 4px; }
+  .rule small { color: var(--muted); }
+  .gen { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 14px; }
+  .gdays { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill { border: 1px solid var(--line); border-radius: 16px; padding: 5px 10px; cursor: pointer; user-select: none; }
+  .pill input { display: none; }
+  .pill:has(input:checked) { background: var(--ink); color: #fff; border-color: var(--ink); }
 </style>
 </head>
 <body>
@@ -109,6 +131,7 @@ function shell() {
     <div class="tabs">
       <button class="tab${tab === 'listings' ? ' on' : ''}" data-t="listings">Anúncios</button>
       <button class="tab${tab === 'visits' ? ' on' : ''}" data-t="visits">Visitas${nNew ? `<span class="n">${nNew}</span>` : ''}</button>
+      <button class="tab${tab === 'agenda' ? ' on' : ''}" data-t="agenda">Agenda</button>
     </div>
     <button class="btn btn-ghost" id="logout">Sair</button>
   </div></header>
@@ -116,7 +139,82 @@ function shell() {
   <div class="modal ed" id="ed"><div class="sheet" id="edSheet"></div></div>`;
   document.querySelectorAll('.tab').forEach((b) => b.onclick = () => { tab = b.dataset.t; shell(); });
   $('#logout').onclick = async () => { await api('/api/logout', { method: 'POST' }); loginView(); };
-  tab === 'listings' ? listingsView() : visitsView();
+  tab === 'listings' ? listingsView() : tab === 'visits' ? visitsView() : agendaView();
+}
+
+// ---------- Agenda de visitas ----------
+const WD = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+const WD_ORDER = [1, 2, 3, 4, 5, 6, 0];
+let SCH = null;
+async function agendaView() {
+  if (!SCH) { $('#main').innerHTML = '<div class="empty">Carregando…</div>'; SCH = await api('/api/admin/schedule'); }
+  const s = SCH;
+  const fmt = (d) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' });
+  $('#main').innerHTML = `
+  <div class="adm-top"><h1>Agenda de visitas</h1><button class="btn btn-dark" id="schSave">Salvar agenda</button></div>
+  <p style="color:var(--muted);margin:-12px 0 24px">Escolha os dias e horários em que você pode receber visitas. Vale para todos os anúncios.</p>
+
+  <div class="rows" style="padding:18px;margin-bottom:16px">
+    <b style="display:block;margin-bottom:10px">Preencher rápido</b>
+    <div class="gen">
+      <label>De <input type="time" id="gFrom" value="10:00"></label>
+      <label>até <input type="time" id="gTo" value="18:00"></label>
+      <label>a cada <select id="gStep"><option value="30">30 min</option><option value="60" selected>1 hora</option><option value="90">1h30</option><option value="120">2 horas</option></select></label>
+      <span class="gdays">${WD_ORDER.map((d) => `<label class="pill"><input type="checkbox" value="${d}"${d >= 1 && d <= 5 ? ' checked' : ''}>${WD[d].slice(0, 3)}</label>`).join('')}</span>
+      <button class="btn btn-outline btn-sm" id="gApply">Aplicar nos dias marcados</button>
+    </div>
+  </div>
+
+  <div class="rows">${WD_ORDER.map((d) => `
+    <div class="wd" data-d="${d}">
+      <div class="wd-h"><label class="switch"><input type="checkbox" class="wd-on"${s.days[d].length ? ' checked' : ''}> ${WD[d]}</label>
+        <small>${s.days[d].length ? plural(s.days[d].length, 'horário', 'horários') : 'Sem visitas'}</small></div>
+      <div class="chips">${s.days[d].map((t) => `<span class="chip-t">${t}<button data-rm="${t}" aria-label="Remover ${t}">×</button></span>`).join('')}
+        <span class="addt"><input type="time" step="900"><button class="btn btn-ghost btn-sm" data-add>+ Adicionar</button></span></div>
+    </div>`).join('')}
+  </div>
+
+  <h3 style="margin:32px 0 12px">Regras</h3>
+  <div class="rows" style="padding:18px;display:grid;gap:14px">
+    <label class="rule">Mostrar horários para os próximos <input type="number" id="sAhead" min="1" max="90" value="${s.daysAhead}"> dias</label>
+    <label class="rule">Antecedência mínima de <input type="number" id="sNotice" min="0" max="168" value="${s.minNoticeHours}"> horas <small>(ex.: 12 = ninguém marca para daqui a menos de 12h)</small></label>
+    <label class="switch"><input type="checkbox" id="sOne"${s.onePerSlot ? ' checked' : ''}> Só uma visita por horário em cada quarto <small style="font-weight:400;color:var(--muted)">(o horário some depois que alguém pede)</small></label>
+  </div>
+
+  <h3 style="margin:32px 0 12px">Datas bloqueadas</h3>
+  <div class="rows" style="padding:18px">
+    <p style="margin:0 0 12px;color:var(--muted);font-size:14px">Feriados, viagens ou dias em que você não pode. Nenhum horário aparece nesses dias.</p>
+    <div class="chips">${s.blocked.map((d) => `<span class="chip-t">${fmt(d)}<button data-unblock="${d}" aria-label="Desbloquear">×</button></span>`).join('') || '<small style="color:var(--muted)">Nenhuma data bloqueada.</small>'}</div>
+    <div style="display:flex;gap:8px;margin-top:12px"><input type="date" id="bDate" class="inp"><button class="btn btn-outline btn-sm" id="bAdd">Bloquear data</button></div>
+  </div>
+  <div style="margin-top:24px;text-align:right"><button class="btn btn-dark" id="schSave2">Salvar agenda</button></div>`;
+
+  const readRules = () => { s.daysAhead = +$('#sAhead').value || 21; s.minNoticeHours = +$('#sNotice').value || 0; s.onePerSlot = $('#sOne').checked; };
+  const rerender = () => { readRules(); agendaView(); };
+  document.querySelectorAll('.wd').forEach((w) => {
+    const d = +w.dataset.d;
+    w.querySelector('.wd-on').onchange = (e) => {
+      if (!e.target.checked) { w._saved = s.days[d]; s.days[d] = []; }
+      else s.days[d] = (w._saved && w._saved.length) ? w._saved : ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
+      rerender();
+    };
+    w.querySelectorAll('[data-rm]').forEach((b) => b.onclick = () => { s.days[d] = s.days[d].filter((t) => t !== b.dataset.rm); rerender(); });
+    w.querySelector('[data-add]').onclick = () => {
+      const v = w.querySelector('.addt input').value; if (!v) return toast('Escolha um horário');
+      s.days[d] = [...new Set([...s.days[d], v])].sort(); rerender();
+    };
+  });
+  $('#gApply').onclick = () => {
+    const [fh, fm] = $('#gFrom').value.split(':').map(Number), [th, tm] = $('#gTo').value.split(':').map(Number), step = +$('#gStep').value;
+    const times = []; for (let m = fh * 60 + fm; m <= th * 60 + tm; m += step) times.push(String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'));
+    const ds = [...document.querySelectorAll('.gdays input:checked')].map((x) => +x.value);
+    if (!times.length || !ds.length) return toast('Confira o horário e os dias');
+    ds.forEach((d) => s.days[d] = times); rerender(); toast('Horários aplicados. Não esqueça de salvar.');
+  };
+  $('#bAdd').onclick = () => { const v = $('#bDate').value; if (!v) return toast('Escolha a data'); s.blocked = [...new Set([...s.blocked, v])].sort(); rerender(); };
+  document.querySelectorAll('[data-unblock]').forEach((b) => b.onclick = () => { s.blocked = s.blocked.filter((x) => x !== b.dataset.unblock); rerender(); });
+  const save = async () => { readRules(); try { SCH = await api('/api/admin/schedule', { method: 'PUT', body: s }); toast('Agenda salva. Já vale no site.'); agendaView(); } catch (e) { toast(e.message); } };
+  $('#schSave').onclick = save; $('#schSave2').onclick = save;
 }
 
 function listingsView() {

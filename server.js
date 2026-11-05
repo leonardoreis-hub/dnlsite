@@ -163,6 +163,72 @@ app.post('/api/login', (req, res) => {
 app.post('/api/logout', (req, res) => req.session.destroy(() => res.json({ ok: true })));
 app.get('/api/me', (req, res) => res.json({ admin: !!req.session.admin }));
 
+// --- Agenda de visitas (configurável no admin) ---
+db.exec(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
+const DEFAULT_SCHEDULE = {
+  // 0 = domingo ... 6 = sábado
+  days: {
+    0: [], 1: ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00'],
+    2: ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00'],
+    3: ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00'],
+    4: ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00'],
+    5: ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00'],
+    6: ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00'],
+  },
+  daysAhead: 21,      // quantos dias à frente aparecem
+  minNoticeHours: 12, // antecedência mínima
+  blocked: [],        // datas bloqueadas (YYYY-MM-DD)
+  onePerSlot: true,   // esconde horário já pedido para o mesmo quarto
+};
+function getSchedule() {
+  const r = db.prepare("SELECT value FROM settings WHERE key = 'schedule'").get();
+  if (!r) return structuredClone(DEFAULT_SCHEDULE);
+  try { return { ...structuredClone(DEFAULT_SCHEDULE), ...JSON.parse(r.value) }; } catch { return structuredClone(DEFAULT_SCHEDULE); }
+}
+function cleanSchedule(b) {
+  const t = (x) => /^([01]\d|2[0-3]):[0-5]\d$/.test(x);
+  const days = {};
+  for (let d = 0; d < 7; d++) days[d] = [...new Set(((b.days || {})[d] || []).filter(t))].sort();
+  return {
+    days,
+    daysAhead: Math.max(1, Math.min(90, parseInt(b.daysAhead) || 21)),
+    minNoticeHours: Math.max(0, Math.min(168, parseInt(b.minNoticeHours) || 0)),
+    blocked: [...new Set((b.blocked || []).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x)))].sort(),
+    onePerSlot: !!b.onePerSlot,
+  };
+}
+// Hora atual em Dublin (relógio de parede), como Date "ingênuo" para comparar com os horários
+function dublinNow() {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Dublin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(new Date()).map((x) => [x.type, x.value]));
+  return new Date(`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:00Z`);
+}
+function availableSlots(listingId) {
+  const s = getSchedule();
+  const now = dublinNow();
+  const earliest = new Date(now.getTime() + s.minNoticeHours * 3600e3);
+  const today = now.toISOString().slice(0, 10);
+  const taken = new Set(s.onePerSlot
+    ? db.prepare("SELECT date, time FROM visits WHERE listing_id = ? AND status != 'cancelado' AND date >= ?").all(listingId, today).map((v) => v.date + ' ' + v.time)
+    : []);
+  const out = [];
+  for (let i = 0; i <= s.daysAhead; i++) {
+    const d = new Date(now.getTime()); d.setUTCDate(d.getUTCDate() + i);
+    const date = d.toISOString().slice(0, 10);
+    if (s.blocked.includes(date)) continue;
+    const times = (s.days[d.getUTCDay()] || []).filter((t) => new Date(`${date}T${t}:00Z`) >= earliest && !taken.has(date + ' ' + t));
+    if (times.length) out.push({ date, times });
+  }
+  return out;
+}
+app.get('/api/schedule/:listingId', (req, res) => res.json({ available: availableSlots(req.params.listingId) }));
+app.get('/api/admin/schedule', requireAdmin, (req, res) => res.json(getSchedule()));
+app.put('/api/admin/schedule', requireAdmin, (req, res) => {
+  const s = cleanSchedule(req.body || {});
+  db.prepare("INSERT INTO settings (key, value) VALUES ('schedule', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(JSON.stringify(s));
+  res.json(s);
+});
+
 // --- Público ---
 app.get('/api/config', (req, res) => res.json({ siteName: SITE_NAME }));
 app.get('/api/listings', (req, res) => {
@@ -186,6 +252,8 @@ app.post('/api/visits', async (req, res) => {
   const req_ = ['name', 'email', 'phone', 'date', 'time'];
   for (const k of req_) if (!String(b[k] || '').trim()) return res.status(400).json({ error: 'Preencha todos os campos obrigatórios' });
   if (!/^\S+@\S+\.\S+$/.test(b.email)) return res.status(400).json({ error: 'E-mail inválido' });
+  const okSlot = availableSlots(listing.id).some((d) => d.date === String(b.date) && d.times.includes(String(b.time)));
+  if (!okSlot) return res.status(409).json({ error: 'Esse horário não está mais disponível. Escolha outro, por favor.' });
   const v = {
     listing_id: listing.id, listing_title: listing.title,
     name: String(b.name).slice(0, 120), email: String(b.email).slice(0, 160), phone: String(b.phone).slice(0, 40),
