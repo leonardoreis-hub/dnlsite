@@ -60,11 +60,14 @@ CREATE TABLE IF NOT EXISTS visits (
 );`);
 
 try { db.exec('ALTER TABLE listings ADD COLUMN schedule TEXT'); } catch {} // agenda própria do quarto (opcional)
+try { db.exec('ALTER TABLE listings ADD COLUMN rented INTEGER NOT NULL DEFAULT 0'); } catch {} // quarto já alugado
+try { db.exec('ALTER TABLE listings ADD COLUMN rented_at TEXT'); } catch {}
 
 const parseListing = (r) => r && ({
   ...r,
   bills_included: !!r.bills_included,
   published: !!r.published,
+  rented: !!r.rented,
   amenities: JSON.parse(r.amenities || '[]'),
   photos: JSON.parse(r.photos || '[]'),
   schedule: r.schedule ? JSON.parse(r.schedule) : null,
@@ -207,6 +210,8 @@ function dublinNow() {
   return new Date(`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:00Z`);
 }
 function availableSlots(listingId) {
+  const rentedRow = db.prepare('SELECT rented FROM listings WHERE id = ?').get(listingId);
+  if (rentedRow && rentedRow.rented) return [];
   const s = getSchedule();
   const own = db.prepare('SELECT schedule FROM listings WHERE id = ?').get(listingId);
   if (own && own.schedule) {
@@ -243,7 +248,7 @@ app.put('/api/admin/schedule', requireAdmin, (req, res) => {
 // --- Público ---
 app.get('/api/config', (req, res) => res.json({ siteName: SITE_NAME }));
 app.get('/api/listings', (req, res) => {
-  res.json(db.prepare('SELECT * FROM listings WHERE published = 1 ORDER BY created_at DESC').all().map(parseListing));
+  res.json(db.prepare('SELECT * FROM listings WHERE published = 1 ORDER BY rented ASC, created_at DESC').all().map(parseListing));
 });
 app.get('/api/listings/:id', (req, res) => {
   const l = parseListing(db.prepare('SELECT * FROM listings WHERE id = ?').get(req.params.id));
@@ -282,7 +287,7 @@ app.post('/api/visits', async (req, res) => {
 
 // --- Admin: anúncios ---
 const FIELDS = ['title', 'type', 'area', 'address', 'lat', 'lng', 'price', 'bills_included', 'available_from', 'min_months',
-  'guests', 'bedrooms', 'bathrooms', 'description', 'amenities', 'house_rules', 'photos', 'published', 'schedule'];
+  'guests', 'bedrooms', 'bathrooms', 'description', 'amenities', 'house_rules', 'photos', 'published', 'schedule', 'rented'];
 function clean(b) {
   const o = {};
   for (const f of FIELDS) if (f in b) o[f] = b[f];
@@ -294,6 +299,7 @@ function clean(b) {
   }
   if ('bills_included' in o) o.bills_included = o.bills_included ? 1 : 0;
   if ('published' in o) o.published = o.published ? 1 : 0;
+  if ('rented' in o) { o.rented = o.rented ? 1 : 0; o.rented_at = o.rented ? new Date().toISOString().slice(0, 10) : null; }
   for (const n of ['lat', 'lng', 'bathrooms']) if (n in o) o[n] = o[n] === '' || o[n] == null ? null : Number(o[n]);
   for (const n of ['price', 'min_months', 'guests', 'bedrooms']) if (n in o) o[n] = parseInt(o[n]) || 0;
   return o;

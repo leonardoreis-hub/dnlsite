@@ -47,10 +47,10 @@ function cardHTML(l) {
   const photos = l.photos.length ? l.photos.slice(0, 8) : [null];
   const isNew = (Date.now() - new Date(l.created_at.replace(' ', 'T') + 'Z')) < 14 * 864e5;
   return `
-  <a class="card" href="/anuncio/${l.id}" data-id="${l.id}">
+  <a class="card${l.rented ? ' rented' : ''}" href="/anuncio/${l.id}" data-id="${l.id}">
     <div class="media">
       <div class="track">${photos.map((p) => p ? `<img src="${esc(p)}" alt="" loading="lazy">` : `<div style="width:100%;flex-shrink:0;display:grid;place-items:center;color:#bbb">${I.house.replace('<svg', '<svg width="48"')}</div>`).join('')}</div>
-      ${isNew ? '<span class="badge">Novo</span>' : ''}
+      ${l.rented ? '<span class="badge badge-rented">Alugado</span>' : isNew ? '<span class="badge">Novo</span>' : ''}
       <button class="fav${favs.has(l.id) ? ' on' : ''}" aria-label="Favoritar">${I.heart}</button>
       ${photos.length > 1 ? `
         <button class="nav prev" aria-label="Anterior" style="display:none">${I.left}</button>
@@ -60,8 +60,8 @@ function cardHTML(l) {
     <div class="info">
       <div class="row1"><span class="t">${esc(l.type)} em ${esc(l.area || 'Cork')}</span></div>
       <div class="sub">${esc(l.title)}</div>
-      <div class="sub">${availText(l.available_from)}</div>
-      <div class="price"><b>${eur(l.price)}</b> mês${l.bills_included ? ' · contas inclusas' : ''}</div>
+      <div class="sub">${l.rented ? 'Já foi alugado' : availText(l.available_from)}</div>
+      <div class="price">${l.rented ? '<b>Alugado</b>' : `<b>${eur(l.price)}</b> mês${l.bills_included ? ' · contas inclusas' : ''}`}</div>
     </div>
   </a>`;
 }
@@ -73,6 +73,7 @@ function filtered() {
   return all.filter((l) => {
     if (cat !== 'Todos' && l.type !== cat) return false;
     if (q && !`${l.title} ${l.area} ${l.address} ${l.description}`.toLowerCase().includes(q)) return false;
+    if (l.rented && (max !== Infinity || when !== '')) return false;
     if (l.price > max) return false;
     if (when !== '') {
       const lim = Date.now() + parseInt(when) * 864e5 + 864e5;

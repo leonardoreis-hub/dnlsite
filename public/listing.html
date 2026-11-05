@@ -111,6 +111,12 @@ function bindForms() {
   });
 }
 
+function rentedHTML() {
+  return `<div class="rented-box"><div class="ok">${I.key}</div><h4>Este quarto já foi alugado</h4>
+    <p>Temos outros quartos disponíveis esperando por você.</p>
+    <a class="btn btn-brand btn-block" href="/">Ver quartos disponíveis</a></div>`;
+}
+
 function galleryHTML(p) {
   const n = Math.min(p.length, 5);
   if (!n) return `<div class="gallery n1"><div style="display:grid;place-items:center;color:#bbb;background:#f7f7f7">${I.house.replace('<svg', '<svg width="64"')}</div></div>`;
@@ -156,8 +162,8 @@ function render() {
       </div>
       <div class="bookbox-wrap desktop">
         <div class="bookbox">
-          <div class="pr"><b>${eur(L.price)}</b><span>mês</span><small>${L.bills_included ? 'contas inclusas' : '+ contas'}</small></div>
-          <div id="schedDesk"></div>
+          ${L.rented ? rentedHTML() : `<div class="pr"><b>${eur(L.price)}</b><span>mês</span><small>${L.bills_included ? 'contas inclusas' : '+ contas'}</small></div>
+          <div id="schedDesk"></div>`}
         </div>
       </div>
     </div>
@@ -168,10 +174,11 @@ function render() {
         <p>A localização exata é enviada após a confirmação da visita.</p></div>
     </div>
   </div>
-  <div class="mbar"><div><b>${eur(L.price)}</b> mês<small>${availText(L.available_from)}</small></div>
-    <button class="btn btn-brand" id="openSched">Agendar visita</button></div>`;
+  <div class="mbar">${L.rented ? `<div><b>Alugado</b><small>Este quarto já foi alugado</small></div>
+    <a class="btn btn-brand" href="/">Ver disponíveis</a>` : `<div><b>${eur(L.price)}</b> mês<small>${availText(L.available_from)}</small></div>
+    <button class="btn btn-brand" id="openSched">Agendar visita</button>`}</div>`;
 
-  $('#schedDesk').innerHTML = scheduleForm('d');
+  if (!L.rented) $('#schedDesk').innerHTML = scheduleForm('d');
   $('#schedMobile').innerHTML = scheduleForm('m');
   bindForms();
 
@@ -190,7 +197,7 @@ function render() {
     try { if (navigator.share) await navigator.share({ title: L.title, url: location.href }); else { await navigator.clipboard.writeText(location.href); toast('Link copiado'); } } catch {}
   };
   $('#favBtn').onclick = () => { const on = favs.toggle(L.id); $('#favBtn svg').style.fill = on ? 'var(--brand)' : 'none'; toast(on ? 'Salvo nos favoritos' : 'Removido dos favoritos'); };
-  $('#openSched').onclick = () => $('#schedModal').classList.add('open');
+  if ($('#openSched')) $('#openSched').onclick = () => $('#schedModal').classList.add('open');
   document.querySelectorAll('[data-close]').forEach((b) => { b.innerHTML = I.x; b.onclick = () => b.closest('.modal').classList.remove('open'); });
   $('#schedModal').onclick = (e) => { if (e.target.id === 'schedModal') e.currentTarget.classList.remove('open'); };
 

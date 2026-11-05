@@ -236,3 +236,11 @@ input, select, textarea { font: inherit; color: inherit; }
 .toast { position: fixed; bottom: 24px; left: 24px; z-index: 200; background: var(--ink); color: #fff; padding: 14px 20px; border-radius: 8px; font-size: 14px; box-shadow: var(--shadow); transform: translateY(120px); transition: transform .3s; }
 .toast.show { transform: none; }
 @media (max-width: 560px) { .header .search .seg:not(:first-child) { display: none; } }
+
+/* Quarto já alugado */
+.card.rented .track img { filter: grayscale(.35) brightness(.92); }
+.badge-rented { background: var(--ink) !important; color: #fff; }
+.rented-box { text-align: center; padding: 8px 0; }
+.rented-box .ok { width: 56px; height: 56px; border-radius: 50%; background: var(--bg-soft); color: var(--ink); display: grid; place-items: center; margin: 0 auto 14px; }
+.rented-box h4 { font-size: 20px; margin: 0 0 6px; }
+.rented-box p { color: var(--muted); margin: 0 0 18px; }

@@ -35,6 +35,7 @@
   .chip { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 12px; background: #EDF7ED; color: #1E4620; }
   .chip.off { background: #EEE; color: #555; }
   .chip.new { background: #FDECEF; color: var(--brand-dark); }
+  .chip.rent { background: var(--ink); color: #fff; }
   @media (max-width: 640px) { .row { grid-template-columns: 64px 1fr; } .row .th { width: 64px; height: 56px; } .row .acts { grid-column: 1/-1; justify-content: flex-start; } }
   .ed .sheet { max-width: 820px; }
   .ed .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -241,9 +242,10 @@ function listingsView() {
     <div class="row">
       ${l.photos[0] ? `<img class="th" src="${esc(l.photos[0])}" alt="">` : '<div class="th"></div>'}
       <div><b>${esc(l.title)}</b><small>${esc(l.type)} · ${esc(l.area || '—')} · ${eur(l.price)}/mês · ${plural(l.photos.length, 'foto', 'fotos')}</small>
-        <div style="margin-top:6px"><span class="chip${l.published ? '' : ' off'}">${l.published ? 'Publicado' : 'Rascunho'}</span>${l.schedule ? ' <span class="chip off">Agenda própria</span>' : ''}</div></div>
+        <div style="margin-top:6px"><span class="chip${l.published ? '' : ' off'}">${l.published ? 'Publicado' : 'Rascunho'}</span>${l.rented ? ' <span class="chip rent">Alugado</span>' : ''}${l.schedule ? ' <span class="chip off">Agenda própria</span>' : ''}</div></div>
       <div class="acts">
         <a class="btn btn-ghost btn-sm" href="/anuncio/${l.id}" target="_blank">Ver</a>
+        <button class="btn btn-ghost btn-sm" data-rent="${l.id}">${l.rented ? 'Marcar como disponível' : 'Marcar como alugado'}</button>
         <button class="btn btn-outline btn-sm" data-edit="${l.id}">Editar</button>
         <button class="btn btn-ghost btn-sm" data-del="${l.id}" style="color:#C13515">Excluir</button>
       </div>
@@ -252,6 +254,12 @@ function listingsView() {
   $('#new').onclick = () => openEditor();
   if ($('#testMail')) $('#testMail').onclick = async () => { try { await api('/api/admin/test-email', { method: 'POST' }); toast('E-mail de teste enviado'); } catch (e) { toast('Falhou: ' + e.message); } };
   document.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () => openEditor(listings.find((l) => l.id == b.dataset.edit)));
+  document.querySelectorAll('[data-rent]').forEach((b) => b.onclick = async () => {
+    const l = listings.find((x) => x.id == b.dataset.rent);
+    b.disabled = true;
+    try { await api('/api/admin/listings/' + l.id, { method: 'PUT', body: { rented: !l.rented } }); await load(); shell();
+      toast(l.rented ? 'Quarto disponível de novo, agendamento liberado' : 'Marcado como alugado'); } catch (e) { toast(e.message); b.disabled = false; }
+  });
   document.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => {
     const l = listings.find((x) => x.id == b.dataset.del);
     if (!confirm(`Excluir "${l.title}"? As fotos também serão apagadas.`)) return;
@@ -352,7 +360,8 @@ function openEditor(l) {
     <div style="height:24px"></div>
   </form>
   <div class="ed-f">
-    <label class="switch"><input type="checkbox" id="pub"${e.published ? ' checked' : ''}> Publicado no site</label>
+    <span style="display:flex;gap:18px;flex-wrap:wrap"><label class="switch"><input type="checkbox" id="pub"${e.published ? ' checked' : ''}> Publicado no site</label>
+    <label class="switch"><input type="checkbox" id="rent"${e.rented ? ' checked' : ''}> Já alugado</label></span>
     <span style="display:flex;gap:8px"><button class="btn btn-ghost" id="edCancel">Cancelar</button><button class="btn btn-dark" id="save">Salvar</button></span>
   </div>`;
   $('#ed').classList.add('open'); document.body.style.overflow = 'hidden';
@@ -433,7 +442,7 @@ async function save() {
   const f = $('#ef'), d = Object.fromEntries(new FormData(f));
   if (!d.title.trim()) { f.title.focus(); return toast('Dê um título ao anúncio'); }
   const body = {
-    ...d, bills_included: f.bills_included.checked, published: $('#pub').checked,
+    ...d, bills_included: f.bills_included.checked, published: $('#pub').checked, rented: $('#rent').checked,
     amenities: [...f.querySelectorAll('[name=am]:checked')].map((x) => x.value),
     photos: editing.photos, lat: editing.lat, lng: editing.lng,
     schedule: editing.schedule ? { days: editing.schedule.days, blocked: editing.schedule.blocked } : null,
