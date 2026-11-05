@@ -59,12 +59,15 @@ CREATE TABLE IF NOT EXISTS visits (
   created_at TEXT DEFAULT (datetime('now'))
 );`);
 
+try { db.exec('ALTER TABLE listings ADD COLUMN schedule TEXT'); } catch {} // agenda própria do quarto (opcional)
+
 const parseListing = (r) => r && ({
   ...r,
   bills_included: !!r.bills_included,
   published: !!r.published,
   amenities: JSON.parse(r.amenities || '[]'),
   photos: JSON.parse(r.photos || '[]'),
+  schedule: r.schedule ? JSON.parse(r.schedule) : null,
 });
 
 // ---------- E-mail ----------
@@ -205,6 +208,14 @@ function dublinNow() {
 }
 function availableSlots(listingId) {
   const s = getSchedule();
+  const own = db.prepare('SELECT schedule FROM listings WHERE id = ?').get(listingId);
+  if (own && own.schedule) {
+    try {
+      const o = JSON.parse(own.schedule);
+      s.days = o.days || s.days;
+      s.blocked = [...new Set([...(s.blocked || []), ...(o.blocked || [])])]; // bloqueios gerais + do quarto
+    } catch {}
+  }
   const now = dublinNow();
   const earliest = new Date(now.getTime() + s.minNoticeHours * 3600e3);
   const today = now.toISOString().slice(0, 10);
@@ -271,12 +282,16 @@ app.post('/api/visits', async (req, res) => {
 
 // --- Admin: anúncios ---
 const FIELDS = ['title', 'type', 'area', 'address', 'lat', 'lng', 'price', 'bills_included', 'available_from', 'min_months',
-  'guests', 'bedrooms', 'bathrooms', 'description', 'amenities', 'house_rules', 'photos', 'published'];
+  'guests', 'bedrooms', 'bathrooms', 'description', 'amenities', 'house_rules', 'photos', 'published', 'schedule'];
 function clean(b) {
   const o = {};
   for (const f of FIELDS) if (f in b) o[f] = b[f];
   if ('amenities' in o) o.amenities = JSON.stringify(Array.isArray(o.amenities) ? o.amenities : []);
   if ('photos' in o) o.photos = JSON.stringify(Array.isArray(o.photos) ? o.photos : []);
+  if ('schedule' in o) {
+    if (o.schedule && typeof o.schedule === 'object') { const c = cleanSchedule(o.schedule); o.schedule = JSON.stringify({ days: c.days, blocked: c.blocked }); }
+    else o.schedule = null;
+  }
   if ('bills_included' in o) o.bills_included = o.bills_included ? 1 : 0;
   if ('published' in o) o.published = o.published ? 1 : 0;
   for (const n of ['lat', 'lng', 'bathrooms']) if (n in o) o[n] = o[n] === '' || o[n] == null ? null : Number(o[n]);

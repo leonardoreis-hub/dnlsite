@@ -146,74 +146,89 @@ function shell() {
 const WD = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const WD_ORDER = [1, 2, 3, 4, 5, 6, 0];
 let SCH = null;
+const fmtDay = (d) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' });
+
+// Editor de dias/horários + datas bloqueadas, reutilizado na agenda geral e em cada anúncio.
+// Altera "sch" (objeto com .days e .blocked) no lugar.
+function dayEditor(el, sch) {
+  const uid = Math.random().toString(36).slice(2, 7);
+  const draw = () => {
+    el.innerHTML = `
+    <div class="rows" style="padding:18px;margin-bottom:16px">
+      <b style="display:block;margin-bottom:10px">Preencher rápido</b>
+      <div class="gen">
+        <label>De <input type="time" class="gFrom" value="10:00"></label>
+        <label>até <input type="time" class="gTo" value="18:00"></label>
+        <label>a cada <select class="gStep"><option value="30">30 min</option><option value="60" selected>1 hora</option><option value="90">1h30</option><option value="120">2 horas</option></select></label>
+        <span class="gdays">${WD_ORDER.map((d) => `<label class="pill"><input type="checkbox" value="${d}"${d >= 1 && d <= 5 ? ' checked' : ''}>${WD[d].slice(0, 3)}</label>`).join('')}</span>
+        <button type="button" class="btn btn-outline btn-sm gApply">Aplicar nos dias marcados</button>
+      </div>
+    </div>
+    <div class="rows">${WD_ORDER.map((d) => `
+      <div class="wd" data-d="${d}">
+        <div class="wd-h"><label class="switch"><input type="checkbox" class="wd-on"${sch.days[d].length ? ' checked' : ''}> ${WD[d]}</label>
+          <small>${sch.days[d].length ? plural(sch.days[d].length, 'horário', 'horários') : 'Sem visitas'}</small></div>
+        <div class="chips">${sch.days[d].map((t) => `<span class="chip-t">${t}<button type="button" data-rm="${t}" aria-label="Remover ${t}">×</button></span>`).join('')}
+          <span class="addt"><input type="time" step="900"><button type="button" class="btn btn-ghost btn-sm" data-add>+ Adicionar</button></span></div>
+      </div>`).join('')}
+    </div>
+    <h4 style="margin:24px 0 10px">Datas bloqueadas</h4>
+    <div class="rows" style="padding:18px">
+      <p style="margin:0 0 12px;color:var(--muted);font-size:14px">Feriados, viagens ou dias em que você não pode. Nenhum horário aparece nesses dias.</p>
+      <div class="chips">${sch.blocked.map((d) => `<span class="chip-t">${fmtDay(d)}<button type="button" data-unblock="${d}" aria-label="Desbloquear">×</button></span>`).join('') || '<small style="color:var(--muted)">Nenhuma data bloqueada.</small>'}</div>
+      <div style="display:flex;gap:8px;margin-top:12px"><input type="date" class="inp bDate"><button type="button" class="btn btn-outline btn-sm bAdd">Bloquear data</button></div>
+    </div>`;
+    const q = (c) => el.querySelector(c);
+    el.querySelectorAll('.wd').forEach((w) => {
+      const d = +w.dataset.d;
+      w.querySelector('.wd-on').onchange = (e) => {
+        if (!e.target.checked) { el['_s' + d] = sch.days[d]; sch.days[d] = []; }
+        else sch.days[d] = (el['_s' + d] && el['_s' + d].length) ? el['_s' + d] : ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
+        draw();
+      };
+      w.querySelectorAll('[data-rm]').forEach((b) => b.onclick = () => { sch.days[d] = sch.days[d].filter((t) => t !== b.dataset.rm); draw(); });
+      w.querySelector('[data-add]').onclick = () => {
+        const v = w.querySelector('.addt input').value; if (!v) return toast('Escolha um horário');
+        sch.days[d] = [...new Set([...sch.days[d], v])].sort(); draw();
+      };
+    });
+    q('.gApply').onclick = () => {
+      const [fh, fm] = q('.gFrom').value.split(':').map(Number), [th, tm] = q('.gTo').value.split(':').map(Number), step = +q('.gStep').value;
+      const times = []; for (let m = fh * 60 + fm; m <= th * 60 + tm; m += step) times.push(String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'));
+      const ds = [...el.querySelectorAll('.gdays input:checked')].map((x) => +x.value);
+      if (!times.length || !ds.length) return toast('Confira o horário e os dias');
+      ds.forEach((d) => sch.days[d] = times); draw(); toast('Horários aplicados. Não esqueça de salvar.');
+    };
+    q('.bAdd').onclick = () => { const v = q('.bDate').value; if (!v) return toast('Escolha a data'); sch.blocked = [...new Set([...sch.blocked, v])].sort(); draw(); };
+    el.querySelectorAll('[data-unblock]').forEach((b) => b.onclick = () => { sch.blocked = sch.blocked.filter((x) => x !== b.dataset.unblock); draw(); });
+  };
+  draw();
+}
+
 async function agendaView() {
   if (!SCH) { $('#main').innerHTML = '<div class="empty">Carregando…</div>'; SCH = await api('/api/admin/schedule'); }
   const s = SCH;
-  const fmt = (d) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' });
+  const own = listings.filter((l) => l.schedule);
   $('#main').innerHTML = `
-  <div class="adm-top"><h1>Agenda de visitas</h1><button class="btn btn-dark" id="schSave">Salvar agenda</button></div>
-  <p style="color:var(--muted);margin:-12px 0 24px">Escolha os dias e horários em que você pode receber visitas. Vale para todos os anúncios.</p>
-
-  <div class="rows" style="padding:18px;margin-bottom:16px">
-    <b style="display:block;margin-bottom:10px">Preencher rápido</b>
-    <div class="gen">
-      <label>De <input type="time" id="gFrom" value="10:00"></label>
-      <label>até <input type="time" id="gTo" value="18:00"></label>
-      <label>a cada <select id="gStep"><option value="30">30 min</option><option value="60" selected>1 hora</option><option value="90">1h30</option><option value="120">2 horas</option></select></label>
-      <span class="gdays">${WD_ORDER.map((d) => `<label class="pill"><input type="checkbox" value="${d}"${d >= 1 && d <= 5 ? ' checked' : ''}>${WD[d].slice(0, 3)}</label>`).join('')}</span>
-      <button class="btn btn-outline btn-sm" id="gApply">Aplicar nos dias marcados</button>
-    </div>
-  </div>
-
-  <div class="rows">${WD_ORDER.map((d) => `
-    <div class="wd" data-d="${d}">
-      <div class="wd-h"><label class="switch"><input type="checkbox" class="wd-on"${s.days[d].length ? ' checked' : ''}> ${WD[d]}</label>
-        <small>${s.days[d].length ? plural(s.days[d].length, 'horário', 'horários') : 'Sem visitas'}</small></div>
-      <div class="chips">${s.days[d].map((t) => `<span class="chip-t">${t}<button data-rm="${t}" aria-label="Remover ${t}">×</button></span>`).join('')}
-        <span class="addt"><input type="time" step="900"><button class="btn btn-ghost btn-sm" data-add>+ Adicionar</button></span></div>
-    </div>`).join('')}
-  </div>
+  <div class="adm-top"><h1>Agenda geral</h1><button class="btn btn-dark" id="schSave">Salvar agenda</button></div>
+  <p style="color:var(--muted);margin:-12px 0 24px">Vale para todos os anúncios, menos os que têm agenda própria (você define isso dentro de cada anúncio, em <b>Editar</b>).</p>
+  ${own.length ? `<div class="notice ok" style="margin-bottom:20px"><b>Com agenda própria:</b> ${own.map((l) => `<a href="#" data-edit-own="${l.id}" style="color:inherit">${esc(l.title)}</a>`).join(' · ')}</div>` : ''}
+  <div id="genDays"></div>
 
   <h3 style="margin:32px 0 12px">Regras</h3>
   <div class="rows" style="padding:18px;display:grid;gap:14px">
     <label class="rule">Mostrar horários para os próximos <input type="number" id="sAhead" min="1" max="90" value="${s.daysAhead}"> dias</label>
     <label class="rule">Antecedência mínima de <input type="number" id="sNotice" min="0" max="168" value="${s.minNoticeHours}"> horas <small>(ex.: 12 = ninguém marca para daqui a menos de 12h)</small></label>
     <label class="switch"><input type="checkbox" id="sOne"${s.onePerSlot ? ' checked' : ''}> Só uma visita por horário em cada quarto <small style="font-weight:400;color:var(--muted)">(o horário some depois que alguém pede)</small></label>
-  </div>
-
-  <h3 style="margin:32px 0 12px">Datas bloqueadas</h3>
-  <div class="rows" style="padding:18px">
-    <p style="margin:0 0 12px;color:var(--muted);font-size:14px">Feriados, viagens ou dias em que você não pode. Nenhum horário aparece nesses dias.</p>
-    <div class="chips">${s.blocked.map((d) => `<span class="chip-t">${fmt(d)}<button data-unblock="${d}" aria-label="Desbloquear">×</button></span>`).join('') || '<small style="color:var(--muted)">Nenhuma data bloqueada.</small>'}</div>
-    <div style="display:flex;gap:8px;margin-top:12px"><input type="date" id="bDate" class="inp"><button class="btn btn-outline btn-sm" id="bAdd">Bloquear data</button></div>
+    <small style="color:var(--muted)">As regras e as datas bloqueadas aqui valem para todos os anúncios, inclusive os com agenda própria.</small>
   </div>
   <div style="margin-top:24px;text-align:right"><button class="btn btn-dark" id="schSave2">Salvar agenda</button></div>`;
-
-  const readRules = () => { s.daysAhead = +$('#sAhead').value || 21; s.minNoticeHours = +$('#sNotice').value || 0; s.onePerSlot = $('#sOne').checked; };
-  const rerender = () => { readRules(); agendaView(); };
-  document.querySelectorAll('.wd').forEach((w) => {
-    const d = +w.dataset.d;
-    w.querySelector('.wd-on').onchange = (e) => {
-      if (!e.target.checked) { w._saved = s.days[d]; s.days[d] = []; }
-      else s.days[d] = (w._saved && w._saved.length) ? w._saved : ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
-      rerender();
-    };
-    w.querySelectorAll('[data-rm]').forEach((b) => b.onclick = () => { s.days[d] = s.days[d].filter((t) => t !== b.dataset.rm); rerender(); });
-    w.querySelector('[data-add]').onclick = () => {
-      const v = w.querySelector('.addt input').value; if (!v) return toast('Escolha um horário');
-      s.days[d] = [...new Set([...s.days[d], v])].sort(); rerender();
-    };
-  });
-  $('#gApply').onclick = () => {
-    const [fh, fm] = $('#gFrom').value.split(':').map(Number), [th, tm] = $('#gTo').value.split(':').map(Number), step = +$('#gStep').value;
-    const times = []; for (let m = fh * 60 + fm; m <= th * 60 + tm; m += step) times.push(String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'));
-    const ds = [...document.querySelectorAll('.gdays input:checked')].map((x) => +x.value);
-    if (!times.length || !ds.length) return toast('Confira o horário e os dias');
-    ds.forEach((d) => s.days[d] = times); rerender(); toast('Horários aplicados. Não esqueça de salvar.');
+  dayEditor($('#genDays'), s);
+  document.querySelectorAll('[data-edit-own]').forEach((a) => a.onclick = (e) => { e.preventDefault(); openEditor(listings.find((l) => l.id == a.dataset.editOwn)); });
+  const save = async () => {
+    s.daysAhead = +$('#sAhead').value || 21; s.minNoticeHours = +$('#sNotice').value || 0; s.onePerSlot = $('#sOne').checked;
+    try { SCH = await api('/api/admin/schedule', { method: 'PUT', body: s }); toast('Agenda salva. Já vale no site.'); agendaView(); } catch (e) { toast(e.message); }
   };
-  $('#bAdd').onclick = () => { const v = $('#bDate').value; if (!v) return toast('Escolha a data'); s.blocked = [...new Set([...s.blocked, v])].sort(); rerender(); };
-  document.querySelectorAll('[data-unblock]').forEach((b) => b.onclick = () => { s.blocked = s.blocked.filter((x) => x !== b.dataset.unblock); rerender(); });
-  const save = async () => { readRules(); try { SCH = await api('/api/admin/schedule', { method: 'PUT', body: s }); toast('Agenda salva. Já vale no site.'); agendaView(); } catch (e) { toast(e.message); } };
   $('#schSave').onclick = save; $('#schSave2').onclick = save;
 }
 
@@ -226,7 +241,7 @@ function listingsView() {
     <div class="row">
       ${l.photos[0] ? `<img class="th" src="${esc(l.photos[0])}" alt="">` : '<div class="th"></div>'}
       <div><b>${esc(l.title)}</b><small>${esc(l.type)} · ${esc(l.area || '—')} · ${eur(l.price)}/mês · ${plural(l.photos.length, 'foto', 'fotos')}</small>
-        <div style="margin-top:6px"><span class="chip${l.published ? '' : ' off'}">${l.published ? 'Publicado' : 'Rascunho'}</span></div></div>
+        <div style="margin-top:6px"><span class="chip${l.published ? '' : ' off'}">${l.published ? 'Publicado' : 'Rascunho'}</span>${l.schedule ? ' <span class="chip off">Agenda própria</span>' : ''}</div></div>
       <div class="acts">
         <a class="btn btn-ghost btn-sm" href="/anuncio/${l.id}" target="_blank">Ver</a>
         <button class="btn btn-outline btn-sm" data-edit="${l.id}">Editar</button>
@@ -317,6 +332,14 @@ function openEditor(l) {
     <h4>Comodidades</h4>
     <div class="am">${Object.keys(AMENITIES).map((a) => `<label><input type="checkbox" name="am" value="${esc(a)}"${e.amenities.includes(a) ? ' checked' : ''}>${esc(a)}</label>`).join('')}</div>
 
+    <h4>Agenda de visitas deste quarto</h4>
+    <div class="am" id="schMode">
+      <label><input type="radio" name="schmode" value="geral"${e.schedule ? '' : ' checked'}>Usar a agenda geral</label>
+      <label><input type="radio" name="schmode" value="propria"${e.schedule ? ' checked' : ''}>Agenda própria para este quarto</label>
+    </div>
+    <p id="schHint" style="color:var(--muted);font-size:14px;margin:10px 0 0">${e.schedule ? 'Só os horários abaixo aparecem neste anúncio.' : 'Este anúncio mostra os horários da aba Agenda.'}</p>
+    <div id="lDays" style="margin-top:14px"></div>
+
     <h4>Localização</h4>
     <div class="stack">
       <div style="display:flex;gap:8px">
@@ -336,6 +359,21 @@ function openEditor(l) {
   const close = () => { $('#ed').classList.remove('open'); document.body.style.overflow = ''; };
   $('#edX').onclick = close; $('#edCancel').onclick = close;
   renderPhotos();
+
+  // Agenda própria do quarto
+  if (e.schedule) dayEditor($('#lDays'), e.schedule);
+  $('#schMode').onchange = async (ev) => {
+    if (ev.target.value === 'propria') {
+      if (!SCH) { try { SCH = await api('/api/admin/schedule'); } catch {} }
+      e.schedule = e._schBackup || { days: JSON.parse(JSON.stringify((SCH && SCH.days) || { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] })), blocked: [] };
+      $('#schHint').textContent = 'Começa com uma cópia da agenda geral. Ajuste do jeito que quiser para este quarto.';
+      dayEditor($('#lDays'), e.schedule);
+    } else {
+      e._schBackup = e.schedule; e.schedule = null;
+      $('#schHint').textContent = 'Este anúncio mostra os horários da aba Agenda.';
+      $('#lDays').innerHTML = '';
+    }
+  };
 
   // Upload
   const drop = $('#drop'), fi = $('#fi');
@@ -398,8 +436,9 @@ async function save() {
     ...d, bills_included: f.bills_included.checked, published: $('#pub').checked,
     amenities: [...f.querySelectorAll('[name=am]:checked')].map((x) => x.value),
     photos: editing.photos, lat: editing.lat, lng: editing.lng,
+    schedule: editing.schedule ? { days: editing.schedule.days, blocked: editing.schedule.blocked } : null,
   };
-  delete body.am;
+  delete body.am; delete body.schmode;
   const btn = $('#save'); btn.disabled = true; btn.textContent = 'Salvando…';
   try {
     if (editing.id) await api('/api/admin/listings/' + editing.id, { method: 'PUT', body });
