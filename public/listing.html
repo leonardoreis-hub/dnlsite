@@ -172,8 +172,8 @@ function render() {
     <div class="sec" style="border-top:1px solid var(--line)">
       <h3>${t('whereLive')}</h3>
       ${L.lat && L.lng ? '<div id="map"></div>' : ''}
-      <div class="map-note"><b>${esc(L.area || 'Cork')}, ${t('ireland')}</b>
-        <p>${t('exactLoc')}</p></div>
+      <div class="map-note"><b>${esc(L.address || ((L.area || 'Cork') + ', ' + t('ireland')))}</b>
+        ${L.lat && L.lng ? `<p><a href="https://www.google.com/maps/search/?api=1&query=${L.lat},${L.lng}" target="_blank" rel="noopener" style="color:var(--ink);font-weight:600">${t('openMaps')} ↗</a></p>` : ''}</div>
     </div>
   </div>
   <div class="mbar">${L.rented ? `<div><b>${t('rented')}</b><small>${t('rentedTitle')}</small></div>
@@ -186,10 +186,9 @@ function render() {
 
   // Mapa com área aproximada (privacidade)
   if (L.lat && L.lng) {
-    const m = window.L ? window.L.map('map', { scrollWheelZoom: false }).setView([L.lat, L.lng], 15) : null;
+    const m = window.L ? window.L.map('map', { scrollWheelZoom: false }).setView([L.lat, L.lng], 16) : null;
     if (m) {
       window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
-      window.L.circle([L.lat, L.lng], { radius: 260, color: '#0E2651', weight: 1.5, fillColor: '#0E2651', fillOpacity: .15 }).addTo(m);
       window.L.marker([L.lat, L.lng], { icon: window.L.divIcon({ className: '', html: `<div style="width:48px;height:48px;border-radius:50%;background:#0E2651;display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px rgba(0,0,0,.25)">${I.house.replace('<svg', '<svg width="24" height="24" style="stroke:#fff"')}</div>`, iconSize: [48, 48], iconAnchor: [24, 24] }) }).addTo(m);
     }
   }

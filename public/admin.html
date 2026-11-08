@@ -242,7 +242,7 @@ function listingsView() {
     <div class="row">
       ${l.photos[0] ? `<img class="th" src="${esc(l.photos[0])}" alt="">` : '<div class="th"></div>'}
       <div><b>${esc(l.title)}</b><small>${esc(l.type)} · ${esc(l.area || '—')} · ${eur(l.price)}/mês · ${plural(l.photos.length, 'foto', 'fotos')}</small>
-        <div style="margin-top:6px"><span class="chip${l.published ? '' : ' off'}">${l.published ? 'Publicado' : 'Rascunho'}</span>${l.rented ? ' <span class="chip rent">Alugado</span>' : ''}${l.schedule ? ' <span class="chip off">Agenda própria</span>' : ''}</div></div>
+        <div style="margin-top:6px"><span class="chip${l.published ? '' : ' off'}">${l.published ? 'Publicado' : 'Rascunho'}</span>${l.rented ? ' <span class="chip rent">Alugado</span>' : ''}${l.geo_checked === 'auto-street' ? ' <span class="chip new" title="O pino ficou na rua. Abra Editar e clique no mapa em cima da casa.">📍 Conferir local</span>' : l.geo_checked === 'failed' || (!l.lat && l.address) ? ' <span class="chip new">📍 Sem localização</span>' : ''}${l.schedule ? ' <span class="chip off">Agenda própria</span>' : ''}</div></div>
       <div class="acts">
         <a class="btn btn-ghost btn-sm" href="/anuncio/${l.id}" target="_blank">Ver</a>
         <button class="btn btn-ghost btn-sm" data-rent="${l.id}">${l.rented ? 'Marcar como disponível' : 'Marcar como alugado'}</button>
@@ -363,10 +363,10 @@ function openEditor(l) {
     <h4>Localização</h4>
     <div class="stack">
       <div style="display:flex;gap:8px">
-        <label class="field" style="flex:1"><span>Endereço (não aparece no site)</span><input name="address" value="${esc(e.address)}" placeholder="Ex.: 12 Main Street, Douglas, Cork"></label>
+        <label class="field" style="flex:1"><span>Endereço (aparece no site)</span><input name="address" value="${esc(e.address)}" placeholder="Ex.: 12 Main Street, Douglas, Cork"></label>
         <button type="button" class="btn btn-outline btn-sm" id="geo">Localizar</button>
       </div>
-      <small style="color:var(--muted)">No site aparece só um círculo aproximado. Clique no mapa para ajustar o ponto.</small>
+      <small style="color:var(--muted)">O pino aparece neste ponto exato no site. Clique em Localizar e, se precisar, clique no mapa em cima da casa para acertar.</small>
     </div>
     <div id="pickMap"></div>
     <div style="height:24px"></div>

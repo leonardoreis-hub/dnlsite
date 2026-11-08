@@ -93,7 +93,7 @@ const DICT = {
   billsSepT: ['Contas à parte', 'Bills not included', 'Gastos aparte'], billsSepD: ['As contas são divididas entre os moradores.', 'Bills are split between housemates.', 'Los gastos se reparten entre los compañeros de casa.'],
   about: ['Sobre este espaço', 'About this place', 'Sobre este espacio'], offers: ['O que este lugar oferece', 'What this place offers', 'Qué ofrece este lugar'],
   rules: ['Regras da casa', 'House rules', 'Normas de la casa'], whereLive: ['Onde você vai morar', "Where you'll live", 'Dónde vivirás'],
-  exactLoc: ['A localização exata é enviada após a confirmação da visita.', 'The exact address is shared once your viewing is confirmed.', 'La dirección exacta se envía cuando se confirma la visita.'],
+  openMaps: ['Abrir no Google Maps', 'Open in Google Maps', 'Abrir en Google Maps'],
   book: ['Agendar visita', 'Book a viewing', 'Reservar una visita'], seeAvail: ['Ver disponíveis', 'See available', 'Ver disponibles'],
   rentedTitle: ['Este quarto já foi alugado', 'This room has been rented', 'Esta habitación ya está alquilada'],
   rentedSub: ['Temos outros quartos disponíveis esperando por você.', 'We have other rooms available for you.', 'Tenemos otras habitaciones disponibles para ti.'],

@@ -64,6 +64,7 @@ try { db.exec('ALTER TABLE listings ADD COLUMN rented INTEGER NOT NULL DEFAULT 0
 try { db.exec('ALTER TABLE listings ADD COLUMN rented_at TEXT'); } catch {}
 try { db.exec('ALTER TABLE listings ADD COLUMN i18n TEXT'); } catch {} // traduções EN/ES de título, descrição e regras
 try { db.exec('ALTER TABLE visits ADD COLUMN lang TEXT'); } catch {}
+try { db.exec('ALTER TABLE listings ADD COLUMN geo_checked TEXT'); } catch {} // auto-house | auto-street | manual | failed
 
 // Traduções iniciais dos anúncios já publicados (aplica só onde ainda não há tradução
 // e só nos campos cujo texto em português continua igual ao original)
@@ -346,12 +347,16 @@ app.get('/api/admin/listings', requireAdmin, (req, res) => {
 app.post('/api/admin/listings', requireAdmin, (req, res) => {
   const o = clean(req.body || {});
   if (!o.title) return res.status(400).json({ error: 'Título é obrigatório' });
+  if (o.lat != null && o.lng != null) o.geo_checked = 'manual';
   const cols = Object.keys(o);
   const info = db.prepare(`INSERT INTO listings (${cols.join(',')}) VALUES (${cols.map((c) => '@' + c).join(',')})`).run(o);
   res.json(parseListing(db.prepare('SELECT * FROM listings WHERE id = ?').get(info.lastInsertRowid)));
 });
 app.put('/api/admin/listings/:id', requireAdmin, (req, res) => {
   const o = clean(req.body || {});
+  const cur = db.prepare('SELECT lat, lng FROM listings WHERE id = ?').get(req.params.id);
+  if (cur && ('lat' in o || 'lng' in o) && o.lat != null && o.lng != null &&
+      (Math.abs((cur.lat ?? 0) - o.lat) > 1e-6 || Math.abs((cur.lng ?? 0) - o.lng) > 1e-6)) o.geo_checked = 'manual';
   const cols = Object.keys(o);
   if (cols.length) db.prepare(`UPDATE listings SET ${cols.map((c) => `${c}=@${c}`).join(',')}, updated_at = datetime('now') WHERE id = @id`).run({ ...o, id: req.params.id });
   res.json(parseListing(db.prepare('SELECT * FROM listings WHERE id = ?').get(req.params.id)));
@@ -427,7 +432,45 @@ try {
   }
 } catch (e) { if (e.code !== 'ENOENT') console.error('Seed de anúncios:', e.message); }
 
+
+// Localização exata: busca o endereço de cada anúncio no OpenStreetMap uma vez
+// (não mexe em pontos ajustados à mão no admin)
+async function geocodeListings() {
+  const rows = db.prepare("SELECT id, address FROM listings WHERE geo_checked IS NULL AND address IS NOT NULL AND address != ''").all();
+  const upd = db.prepare('UPDATE listings SET lat = ?, lng = ?, geo_checked = ? WHERE id = ?');
+  const fail = db.prepare("UPDATE listings SET geo_checked = 'failed' WHERE id = ?");
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (const r of rows) {
+    const base = r.address
+      .replace(/\b[ACDEFHKNPRTVWXY]\d{2}\s?[0-9ACDEFHKNPRTVWXY]{4}\b/gi, '') // tira o Eircode
+      .replace(/^\s*apt\.?\s*\d+\s*,\s*/i, '')                              // tira "Apt 2,"
+      .replace(/\s*,\s*,/g, ',').replace(/[,\s]+$/, '');
+    const parts = base.split(',').map((x) => x.trim()).filter(Boolean);
+    const town = [...parts].reverse().find((x) => !/^co\.?\s/i.test(x)) || parts[parts.length - 1];
+    const short = parts.length > 2 ? `${parts[0]}, ${town}` : base; // rua + cidade
+    const noNum = (x) => x.replace(/^\s*\d+[a-z]?\s+/i, '');
+    const tries = [...new Set([base, short, noNum(base), noNum(short)])].map((x) => x + ', Ireland');
+    let done = false;
+    for (const q of tries) {
+      try {
+        const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=ie&q=' + encodeURIComponent(q);
+        const res = await fetch(url, { headers: { 'User-Agent': 'DNL-Management-rooms-site/1.0', 'Accept-Language': 'en' } });
+        const j = res.ok ? await res.json() : [];
+        await sleep(1200); // respeita o limite de 1 pedido por segundo
+        if (j[0]) {
+          const exact = ['house', 'building', 'residential', 'apartments', 'detached', 'semidetached_house', 'terrace'].includes(j[0].type) || j[0].addresstype === 'building';
+          upd.run(+(+j[0].lat).toFixed(6), +(+j[0].lon).toFixed(6), exact && q === tries[0] ? 'auto-house' : 'auto-street', r.id);
+          console.log(`Localização #${r.id}: ${exact && q === tries[0] ? 'casa' : 'rua'} — ${j[0].display_name}`);
+          done = true; break;
+        }
+      } catch (e) { console.error('Geocode', r.id, e.message); await sleep(1200); }
+    }
+    if (!done) fail.run(r.id);
+  }
+}
+
 app.listen(PORT, () => {
+  if (!process.env.NO_GEOCODE) setTimeout(() => geocodeListings().catch((e) => console.error('Geocode:', e.message)), 4000);
   console.log(`${SITE_NAME} rodando em http://localhost:${PORT}`);
   if (!mailer || !NOTIFY_EMAIL) console.log('Aviso: e-mail não configurado (SMTP_HOST / NOTIFY_EMAIL). Pedidos ficam salvos no admin.');
   if (ADMIN_PASSWORD === 'troque-esta-senha') console.log('Aviso: defina ADMIN_PASSWORD no arquivo .env');
