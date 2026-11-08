@@ -65,6 +65,28 @@ try { db.exec('ALTER TABLE listings ADD COLUMN rented_at TEXT'); } catch {}
 try { db.exec('ALTER TABLE listings ADD COLUMN i18n TEXT'); } catch {} // traduções EN/ES de título, descrição e regras
 try { db.exec('ALTER TABLE visits ADD COLUMN lang TEXT'); } catch {}
 
+// Traduções iniciais dos anúncios já publicados (aplica só onde ainda não há tradução
+// e só nos campos cujo texto em português continua igual ao original)
+try {
+  const seed = JSON.parse(fs.readFileSync(path.join(__dirname, 'seed', 'i18n-seed.json'), 'utf8'));
+  const get = db.prepare('SELECT title, description, house_rules, i18n FROM listings WHERE id = ?');
+  const put = db.prepare('UPDATE listings SET i18n = ? WHERE id = ?');
+  let n = 0;
+  for (const it of seed) {
+    const l = get.get(it.id);
+    if (!l || (l.i18n && l.i18n !== '{}') || l.title !== it.title_pt) continue;
+    const out = {};
+    for (const lg of ['en', 'es']) {
+      const x = { title: it.i18n[lg].title };
+      if (l.description === it.description_pt) x.description = it.i18n[lg].description;
+      if (l.house_rules === it.house_rules_pt) x.house_rules = it.i18n[lg].house_rules;
+      out[lg] = x;
+    }
+    put.run(JSON.stringify(out), it.id); n++;
+  }
+  if (n) console.log(`Traduções aplicadas em ${n} anúncio(s).`);
+} catch (e) { if (e.code !== 'ENOENT') console.error('Seed de traduções:', e.message); }
+
 const parseListing = (r) => r && ({
   ...r,
   bills_included: !!r.bills_included,

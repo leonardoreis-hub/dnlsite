@@ -1,0 +1,218 @@
+[
+ {
+  "id": 1,
+  "title_pt": "Quarto de casal 1 — Lucan, Dublin",
+  "description_pt": "Quarto de casal numa casa compartilhada com 5 quartos em Liffey Valley Park, Lucan (Co. Dublin), gerida pela DNL.\n\nWi-Fi e taxa de lixo já estão incluídos no aluguel. Luz e gás são à parte, divididos entre os moradores.\n\nNa entrada: você paga o proporcional do dia da mudança até o dia 30, mais o depósito (um mês de aluguel). Depois disso, o aluguel vence todo dia 1º. Contrato mínimo de 6 meses.",
+  "house_rules_pt": "Não é permitido receber visitas para dormir.\nSem festas.\nProibido fumar dentro de casa.\nSilêncio das 22h às 8h.\nProibido o uso de drogas.",
+  "i18n": {
+   "en": {
+    "title": "Double room 1 — Lucan, Dublin",
+    "description": "Double room in a shared 5-bedroom house in Liffey Valley Park, Lucan (Co. Dublin), managed by DNL.\n\nWi-Fi and bin charges are included in the rent. Electricity and gas are extra, split between housemates.\n\nOn move-in: you pay pro-rata rent from your move-in day until the 30th, plus the deposit (one month's rent). After that, rent is due on the 1st of every month. Minimum contract of 6 months.",
+    "house_rules": "No overnight guests.\nNo parties.\nNo smoking indoors.\nQuiet hours from 10pm to 8am.\nNo drugs."
+   },
+   "es": {
+    "title": "Habitación doble 1 — Lucan, Dublín",
+    "description": "Habitación doble en una casa compartida de 5 habitaciones en Liffey Valley Park, Lucan (Co. Dublín), gestionada por DNL.\n\nEl wifi y la tasa de basura están incluidos en el alquiler. La luz y el gas van aparte y se reparten entre los compañeros de casa.\n\nAl entrar: pagas la parte proporcional desde el día de la mudanza hasta el día 30, más la fianza (un mes de alquiler). Después, el alquiler se paga el día 1 de cada mes. Contrato mínimo de 6 meses.",
+    "house_rules": "No se permiten invitados a dormir.\nNo se permiten fiestas.\nProhibido fumar dentro de casa.\nSilencio de 22:00 a 8:00.\nProhibidas las drogas."
+   }
+  }
+ },
+ {
+  "id": 2,
+  "title_pt": "Quarto single — Lucan, Dublin",
+  "description_pt": "Quarto single numa casa compartilhada com 5 quartos em Liffey Valley Park, Lucan (Co. Dublin), gerida pela DNL.\n\nWi-Fi e taxa de lixo já estão incluídos no aluguel. Luz e gás são à parte, divididos entre os moradores.\n\nNa entrada: você paga o proporcional do dia da mudança até o dia 30, mais o depósito (um mês de aluguel). Depois disso, o aluguel vence todo dia 1º. Contrato mínimo de 6 meses.",
+  "house_rules_pt": "Não é permitido receber visitas para dormir.\nSem festas.\nProibido fumar dentro de casa.\nSilêncio das 22h às 8h.\nProibido o uso de drogas.",
+  "i18n": {
+   "en": {
+    "title": "Single room — Lucan, Dublin",
+    "description": "Single room in a shared 5-bedroom house in Liffey Valley Park, Lucan (Co. Dublin), managed by DNL.\n\nWi-Fi and bin charges are included in the rent. Electricity and gas are extra, split between housemates.\n\nOn move-in: you pay pro-rata rent from your move-in day until the 30th, plus the deposit (one month's rent). After that, rent is due on the 1st of every month. Minimum contract of 6 months.",
+    "house_rules": "No overnight guests.\nNo parties.\nNo smoking indoors.\nQuiet hours from 10pm to 8am.\nNo drugs."
+   },
+   "es": {
+    "title": "Habitación individual — Lucan, Dublín",
+    "description": "Habitación individual en una casa compartida de 5 habitaciones en Liffey Valley Park, Lucan (Co. Dublín), gestionada por DNL.\n\nEl wifi y la tasa de basura están incluidos en el alquiler. La luz y el gas van aparte y se reparten entre los compañeros de casa.\n\nAl entrar: pagas la parte proporcional desde el día de la mudanza hasta el día 30, más la fianza (un mes de alquiler). Después, el alquiler se paga el día 1 de cada mes. Contrato mínimo de 6 meses.",
+    "house_rules": "No se permiten invitados a dormir.\nNo se permiten fiestas.\nProhibido fumar dentro de casa.\nSilencio de 22:00 a 8:00.\nProhibidas las drogas."
+   }
+  }
+ },
+ {
+  "id": 3,
+  "title_pt": "Suíte de casal — Lucan, Dublin",
+  "description_pt": "Suíte de casal com banheiro privativo numa casa compartilhada com 5 quartos em Liffey Valley Park, Lucan (Co. Dublin), gerida pela DNL.\n\nWi-Fi e taxa de lixo já estão incluídos no aluguel. Luz e gás são à parte, divididos entre os moradores.\n\nNa entrada: você paga o proporcional do dia da mudança até o dia 30, mais o depósito (um mês de aluguel). Depois disso, o aluguel vence todo dia 1º. Contrato mínimo de 6 meses.",
+  "house_rules_pt": "Não é permitido receber visitas para dormir.\nSem festas.\nProibido fumar dentro de casa.\nSilêncio das 22h às 8h.\nProibido o uso de drogas.",
+  "i18n": {
+   "en": {
+    "title": "En-suite double room — Lucan, Dublin",
+    "description": "En-suite double room with a private bathroom in a shared 5-bedroom house in Liffey Valley Park, Lucan (Co. Dublin), managed by DNL.\n\nWi-Fi and bin charges are included in the rent. Electricity and gas are extra, split between housemates.\n\nOn move-in: you pay pro-rata rent from your move-in day until the 30th, plus the deposit (one month's rent). After that, rent is due on the 1st of every month. Minimum contract of 6 months.",
+    "house_rules": "No overnight guests.\nNo parties.\nNo smoking indoors.\nQuiet hours from 10pm to 8am.\nNo drugs."
+   },
+   "es": {
+    "title": "Habitación doble con baño — Lucan, Dublín",
+    "description": "Habitación doble con baño privado en una casa compartida de 5 habitaciones en Liffey Valley Park, Lucan (Co. Dublín), gestionada por DNL.\n\nEl wifi y la tasa de basura están incluidos en el alquiler. La luz y el gas van aparte y se reparten entre los compañeros de casa.\n\nAl entrar: pagas la parte proporcional desde el día de la mudanza hasta el día 30, más la fianza (un mes de alquiler). Después, el alquiler se paga el día 1 de cada mes. Contrato mínimo de 6 meses.",
+    "house_rules": "No se permiten invitados a dormir.\nNo se permiten fiestas.\nProhibido fumar dentro de casa.\nSilencio de 22:00 a 8:00.\nProhibidas las drogas."
+   }
+  }
+ },
+ {
+  "id": 4,
+  "title_pt": "Quarto de casal 4 — Lucan, Dublin",
+  "description_pt": "Quarto de casal numa casa compartilhada com 5 quartos em Liffey Valley Park, Lucan (Co. Dublin), gerida pela DNL.\n\nWi-Fi e taxa de lixo já estão incluídos no aluguel. Luz e gás são à parte, divididos entre os moradores.\n\nNa entrada: você paga o proporcional do dia da mudança até o dia 30, mais o depósito (um mês de aluguel). Depois disso, o aluguel vence todo dia 1º. Contrato mínimo de 6 meses.",
+  "house_rules_pt": "Não é permitido receber visitas para dormir.\nSem festas.\nProibido fumar dentro de casa.\nSilêncio das 22h às 8h.\nProibido o uso de drogas.",
+  "i18n": {
+   "en": {
+    "title": "Double room 4 — Lucan, Dublin",
+    "description": "Double room in a shared 5-bedroom house in Liffey Valley Park, Lucan (Co. Dublin), managed by DNL.\n\nWi-Fi and bin charges are included in the rent. Electricity and gas are extra, split between housemates.\n\nOn move-in: you pay pro-rata rent from your move-in day until the 30th, plus the deposit (one month's rent). After that, rent is due on the 1st of every month. Minimum contract of 6 months.",
+    "house_rules": "No overnight guests.\nNo parties.\nNo smoking indoors.\nQuiet hours from 10pm to 8am.\nNo drugs."
+   },
+   "es": {
+    "title": "Habitación doble 4 — Lucan, Dublín",
+    "description": "Habitación doble en una casa compartida de 5 habitaciones en Liffey Valley Park, Lucan (Co. Dublín), gestionada por DNL.\n\nEl wifi y la tasa de basura están incluidos en el alquiler. La luz y el gas van aparte y se reparten entre los compañeros de casa.\n\nAl entrar: pagas la parte proporcional desde el día de la mudanza hasta el día 30, más la fianza (un mes de alquiler). Después, el alquiler se paga el día 1 de cada mes. Contrato mínimo de 6 meses.",
+    "house_rules": "No se permiten invitados a dormir.\nNo se permiten fiestas.\nProhibido fumar dentro de casa.\nSilencio de 22:00 a 8:00.\nProhibidas las drogas."
+   }
+  }
+ },
+ {
+  "id": 5,
+  "title_pt": "Quarto de casal 5 — Lucan, Dublin",
+  "description_pt": "Quarto de casal numa casa compartilhada com 5 quartos em Liffey Valley Park, Lucan (Co. Dublin), gerida pela DNL.\n\nWi-Fi e taxa de lixo já estão incluídos no aluguel. Luz e gás são à parte, divididos entre os moradores.\n\nNa entrada: você paga o proporcional do dia da mudança até o dia 30, mais o depósito (um mês de aluguel). Depois disso, o aluguel vence todo dia 1º. Contrato mínimo de 6 meses.",
+  "house_rules_pt": "Não é permitido receber visitas para dormir.\nSem festas.\nProibido fumar dentro de casa.\nSilêncio das 22h às 8h.\nProibido o uso de drogas.",
+  "i18n": {
+   "en": {
+    "title": "Double room 5 — Lucan, Dublin",
+    "description": "Double room in a shared 5-bedroom house in Liffey Valley Park, Lucan (Co. Dublin), managed by DNL.\n\nWi-Fi and bin charges are included in the rent. Electricity and gas are extra, split between housemates.\n\nOn move-in: you pay pro-rata rent from your move-in day until the 30th, plus the deposit (one month's rent). After that, rent is due on the 1st of every month. Minimum contract of 6 months.",
+    "house_rules": "No overnight guests.\nNo parties.\nNo smoking indoors.\nQuiet hours from 10pm to 8am.\nNo drugs."
+   },
+   "es": {
+    "title": "Habitación doble 5 — Lucan, Dublín",
+    "description": "Habitación doble en una casa compartida de 5 habitaciones en Liffey Valley Park, Lucan (Co. Dublín), gestionada por DNL.\n\nEl wifi y la tasa de basura están incluidos en el alquiler. La luz y el gas van aparte y se reparten entre los compañeros de casa.\n\nAl entrar: pagas la parte proporcional desde el día de la mudanza hasta el día 30, más la fianza (un mes de alquiler). Después, el alquiler se paga el día 1 de cada mes. Contrato mínimo de 6 meses.",
+    "house_rules": "No se permiten invitados a dormir.\nNo se permiten fiestas.\nProhibido fumar dentro de casa.\nSilencio de 22:00 a 8:00.\nProhibidas las drogas."
+   }
+  }
+ },
+ {
+  "id": 6,
+  "title_pt": "Quarto de casal 1 — Centro de Cork (Grand Parade)",
+  "description_pt": "Quarto de casal num apartamento de 2 quartos no 4º andar, bem no centro de Cork, em Grand Parade. Andar alto e bem privativo.\n\nO apartamento tem sala, cozinha e 1 banheiro, dividido só entre os dois quartos.\n\nOs ônibus ficam a menos de 5 minutos a pé, quase em frente ao prédio: 202, 207, 208, 214, 216, 220 e 220X, praticamente todas as linhas do centro.\n\nAs contas de energia são à parte e chegam a cada 2 meses, mais ou menos.\n\nNa entrada: você paga o proporcional do dia da mudança até o dia 30, mais o depósito (um mês de aluguel). Depois disso, o aluguel vence todo dia 1º. Contrato mínimo de 6 meses.",
+  "house_rules_pt": "Não é permitido receber visitas para dormir.\nSem festas.\nProibido fumar dentro de casa.\nSilêncio das 22h às 8h.\nProibido o uso de drogas.",
+  "i18n": {
+   "en": {
+    "title": "Double room 1 — Cork City Centre (Grand Parade)",
+    "description": "Double room in a 2-bedroom apartment on the 4th floor, right in Cork city centre on Grand Parade. High up and very private.\n\nThe apartment has a living room, a kitchen and 1 bathroom, shared only between the two rooms.\n\nBuses are less than 5 minutes' walk away, almost opposite the building: 202, 207, 208, 214, 216, 220 and 220X, pretty much every city centre route.\n\nEnergy bills are extra and arrive roughly every 2 months.\n\nOn move-in: you pay pro-rata rent from your move-in day until the 30th, plus the deposit (one month's rent). After that, rent is due on the 1st of every month. Minimum contract of 6 months.",
+    "house_rules": "No overnight guests.\nNo parties.\nNo smoking indoors.\nQuiet hours from 10pm to 8am.\nNo drugs."
+   },
+   "es": {
+    "title": "Habitación doble 1 — Centro de Cork (Grand Parade)",
+    "description": "Habitación doble en un apartamento de 2 habitaciones en un 4.º piso, en pleno centro de Cork, en Grand Parade. Piso alto y muy privado.\n\nEl apartamento tiene salón, cocina y 1 baño, compartido solo entre las dos habitaciones.\n\nLos autobuses están a menos de 5 minutos a pie, casi enfrente del edificio: 202, 207, 208, 214, 216, 220 y 220X, prácticamente todas las líneas del centro.\n\nLas facturas de energía van aparte y llegan más o menos cada 2 meses.\n\nAl entrar: pagas la parte proporcional desde el día de la mudanza hasta el día 30, más la fianza (un mes de alquiler). Después, el alquiler se paga el día 1 de cada mes. Contrato mínimo de 6 meses.",
+    "house_rules": "No se permiten invitados a dormir.\nNo se permiten fiestas.\nProhibido fumar dentro de casa.\nSilencio de 22:00 a 8:00.\nProhibidas las drogas."
+   }
+  }
+ },
+ {
+  "id": 7,
+  "title_pt": "Quarto de casal 2 — Centro de Cork (Grand Parade)",
+  "description_pt": "Quarto de casal num apartamento de 2 quartos no 4º andar, bem no centro de Cork, em Grand Parade. Andar alto e bem privativo.\n\nO apartamento tem sala, cozinha e 1 banheiro, dividido só entre os dois quartos.\n\nOs ônibus ficam a menos de 5 minutos a pé, quase em frente ao prédio: 202, 207, 208, 214, 216, 220 e 220X, praticamente todas as linhas do centro.\n\nAs contas de energia são à parte e chegam a cada 2 meses, mais ou menos.\n\nNa entrada: você paga o proporcional do dia da mudança até o dia 30, mais o depósito (um mês de aluguel). Depois disso, o aluguel vence todo dia 1º. Contrato mínimo de 6 meses.",
+  "house_rules_pt": "Não é permitido receber visitas para dormir.\nSem festas.\nProibido fumar dentro de casa.\nSilêncio das 22h às 8h.\nProibido o uso de drogas.",
+  "i18n": {
+   "en": {
+    "title": "Double room 2 — Cork City Centre (Grand Parade)",
+    "description": "Double room in a 2-bedroom apartment on the 4th floor, right in Cork city centre on Grand Parade. High up and very private.\n\nThe apartment has a living room, a kitchen and 1 bathroom, shared only between the two rooms.\n\nBuses are less than 5 minutes' walk away, almost opposite the building: 202, 207, 208, 214, 216, 220 and 220X, pretty much every city centre route.\n\nEnergy bills are extra and arrive roughly every 2 months.\n\nOn move-in: you pay pro-rata rent from your move-in day until the 30th, plus the deposit (one month's rent). After that, rent is due on the 1st of every month. Minimum contract of 6 months.",
+    "house_rules": "No overnight guests.\nNo parties.\nNo smoking indoors.\nQuiet hours from 10pm to 8am.\nNo drugs."
+   },
+   "es": {
+    "title": "Habitación doble 2 — Centro de Cork (Grand Parade)",
+    "description": "Habitación doble en un apartamento de 2 habitaciones en un 4.º piso, en pleno centro de Cork, en Grand Parade. Piso alto y muy privado.\n\nEl apartamento tiene salón, cocina y 1 baño, compartido solo entre las dos habitaciones.\n\nLos autobuses están a menos de 5 minutos a pie, casi enfrente del edificio: 202, 207, 208, 214, 216, 220 y 220X, prácticamente todas las líneas del centro.\n\nLas facturas de energía van aparte y llegan más o menos cada 2 meses.\n\nAl entrar: pagas la parte proporcional desde el día de la mudanza hasta el día 30, más la fianza (un mes de alquiler). Después, el alquiler se paga el día 1 de cada mes. Contrato mínimo de 6 meses.",
+    "house_rules": "No se permiten invitados a dormir.\nNo se permiten fiestas.\nProhibido fumar dentro de casa.\nSilencio de 22:00 a 8:00.\nProhibidas las drogas."
+   }
+  }
+ },
+ {
+  "id": 8,
+  "title_pt": "Quarto single no térreo — Wilton",
+  "description_pt": "Quarto single no andar de baixo de uma casa com 5 quartos. O banheiro é dividido só com mais um casal, então é bem tranquilo. Os moradores do andar de cima têm banheiro próprio.\n\nAceita homem ou mulher.\n\nLocalização: quase em frente ao Wilton Shopping Centre (menos de 2 minutos a pé), perto do Cork University Hospital e das principais linhas de ônibus para o centro (208, 214, 216 e 219).\n\nAs contas são à parte, divididas entre os moradores.\n\nNa entrada: você paga o proporcional do dia da mudança até o dia 30, mais o depósito (um mês de aluguel). Depois disso, o aluguel vence todo dia 1º. Contrato mínimo de 6 meses.",
+  "house_rules_pt": "Não é permitido receber visitas para dormir.\nSem festas.\nProibido fumar dentro de casa.\nSilêncio das 22h às 8h.\nProibido o uso de drogas.",
+  "i18n": {
+   "en": {
+    "title": "Ground-floor single room — Wilton",
+    "description": "Single room on the ground floor of a 5-bedroom house. The bathroom is shared with just one couple, so it is very quiet. Upstairs housemates have their own bathroom.\n\nOpen to men or women.\n\nLocation: almost opposite Wilton Shopping Centre (less than 2 minutes' walk), close to Cork University Hospital and the main bus routes into the city centre (208, 214, 216 and 219).\n\nBills are extra, split between housemates.\n\nOn move-in: you pay pro-rata rent from your move-in day until the 30th, plus the deposit (one month's rent). After that, rent is due on the 1st of every month. Minimum contract of 6 months.",
+    "house_rules": "No overnight guests.\nNo parties.\nNo smoking indoors.\nQuiet hours from 10pm to 8am.\nNo drugs."
+   },
+   "es": {
+    "title": "Habitación individual en planta baja — Wilton",
+    "description": "Habitación individual en la planta baja de una casa de 5 habitaciones. El baño se comparte solo con una pareja, así que es muy tranquilo. Los de la planta de arriba tienen su propio baño.\n\nPara hombre o mujer.\n\nUbicación: casi enfrente del Wilton Shopping Centre (a menos de 2 minutos a pie), cerca del Cork University Hospital y de las principales líneas de autobús al centro (208, 214, 216 y 219).\n\nLos gastos van aparte y se reparten entre los compañeros de casa.\n\nAl entrar: pagas la parte proporcional desde el día de la mudanza hasta el día 30, más la fianza (un mes de alquiler). Después, el alquiler se paga el día 1 de cada mes. Contrato mínimo de 6 meses.",
+    "house_rules": "No se permiten invitados a dormir.\nNo se permiten fiestas.\nProhibido fumar dentro de casa.\nSilencio de 22:00 a 8:00.\nProhibidas las drogas."
+   }
+  }
+ },
+ {
+  "id": 9,
+  "title_pt": "Quarto de casal no andar de cima — Wilton",
+  "description_pt": "Quarto de casal no andar de cima de uma casa com 5 quartos. Os moradores do andar de cima têm banheiro próprio, separado do andar de baixo.\n\nLocalização: quase em frente ao Wilton Shopping Centre (menos de 2 minutos a pé), perto do Cork University Hospital e das principais linhas de ônibus para o centro (208, 214, 216 e 219).\n\nAs contas são à parte, divididas entre os moradores.\n\nNa entrada: você paga o proporcional do dia da mudança até o dia 30, mais o depósito (um mês de aluguel). Depois disso, o aluguel vence todo dia 1º. Contrato mínimo de 6 meses.",
+  "house_rules_pt": "Não é permitido receber visitas para dormir.\nSem festas.\nProibido fumar dentro de casa.\nSilêncio das 22h às 8h.\nProibido o uso de drogas.",
+  "i18n": {
+   "en": {
+    "title": "Upstairs double room — Wilton",
+    "description": "Double room upstairs in a 5-bedroom house. Upstairs housemates have their own bathroom, separate from the ground floor.\n\nLocation: almost opposite Wilton Shopping Centre (less than 2 minutes' walk), close to Cork University Hospital and the main bus routes into the city centre (208, 214, 216 and 219).\n\nBills are extra, split between housemates.\n\nOn move-in: you pay pro-rata rent from your move-in day until the 30th, plus the deposit (one month's rent). After that, rent is due on the 1st of every month. Minimum contract of 6 months.",
+    "house_rules": "No overnight guests.\nNo parties.\nNo smoking indoors.\nQuiet hours from 10pm to 8am.\nNo drugs."
+   },
+   "es": {
+    "title": "Habitación doble en la planta de arriba — Wilton",
+    "description": "Habitación doble en la planta de arriba de una casa de 5 habitaciones. Los de la planta de arriba tienen su propio baño, separado de la planta baja.\n\nUbicación: casi enfrente del Wilton Shopping Centre (a menos de 2 minutos a pie), cerca del Cork University Hospital y de las principales líneas de autobús al centro (208, 214, 216 y 219).\n\nLos gastos van aparte y se reparten entre los compañeros de casa.\n\nAl entrar: pagas la parte proporcional desde el día de la mudanza hasta el día 30, más la fianza (un mes de alquiler). Después, el alquiler se paga el día 1 de cada mes. Contrato mínimo de 6 meses.",
+    "house_rules": "No se permiten invitados a dormir.\nNo se permiten fiestas.\nProhibido fumar dentro de casa.\nSilencio de 22:00 a 8:00.\nProhibidas las drogas."
+   }
+  }
+ },
+ {
+  "id": 10,
+  "title_pt": "Quarto de casal — Ballincollig",
+  "description_pt": "Quarto de casal numa casa compartilhada com 4 quartos em Ballincollig, gerida pela DNL.\n\nAs contas são à parte, divididas entre os moradores.\n\nNa entrada: você paga o proporcional do dia da mudança até o dia 30, mais o depósito (um mês de aluguel). Depois disso, o aluguel vence todo dia 1º. Contrato mínimo de 6 meses.",
+  "house_rules_pt": "Não é permitido receber visitas para dormir.\nSem festas.\nProibido fumar dentro de casa.\nSilêncio das 22h às 8h.\nProibido o uso de drogas.",
+  "i18n": {
+   "en": {
+    "title": "Double room — Ballincollig",
+    "description": "Double room in a shared house with 4 bedrooms in Ballincollig, managed by DNL.\n\nBills are extra, split between housemates.\n\nOn move-in: you pay pro-rata rent from your move-in day until the 30th, plus the deposit (one month's rent). After that, rent is due on the 1st of every month. Minimum contract of 6 months.",
+    "house_rules": "No overnight guests.\nNo parties.\nNo smoking indoors.\nQuiet hours from 10pm to 8am.\nNo drugs."
+   },
+   "es": {
+    "title": "Habitación doble — Ballincollig",
+    "description": "Habitación doble en una casa compartida de 4 habitaciones en Ballincollig, gestionada por DNL.\n\nLos gastos van aparte y se reparten entre los compañeros de casa.\n\nAl entrar: pagas la parte proporcional desde el día de la mudanza hasta el día 30, más la fianza (un mes de alquiler). Después, el alquiler se paga el día 1 de cada mes. Contrato mínimo de 6 meses.",
+    "house_rules": "No se permiten invitados a dormir.\nNo se permiten fiestas.\nProhibido fumar dentro de casa.\nSilencio de 22:00 a 8:00.\nProhibidas las drogas."
+   }
+  }
+ },
+ {
+  "id": 11,
+  "title_pt": "Quarto de casal — Gardiners Hill",
+  "description_pt": "Quarto de casal numa casa compartilhada em Gardiners Hill, Cork, gerida pela DNL.\n\nAs contas são à parte, divididas entre os moradores.\n\nNa entrada: você paga o proporcional do dia da mudança até o dia 30, mais o depósito (um mês de aluguel). Depois disso, o aluguel vence todo dia 1º. Contrato mínimo de 6 meses.",
+  "house_rules_pt": "Não é permitido receber visitas para dormir.\nSem festas.\nProibido fumar dentro de casa.\nSilêncio das 22h às 8h.\nProibido o uso de drogas.",
+  "i18n": {
+   "en": {
+    "title": "Double room — Gardiners Hill",
+    "description": "Double room in a shared house in Gardiners Hill, Cork, managed by DNL.\n\nBills are extra, split between housemates.\n\nOn move-in: you pay pro-rata rent from your move-in day until the 30th, plus the deposit (one month's rent). After that, rent is due on the 1st of every month. Minimum contract of 6 months.",
+    "house_rules": "No overnight guests.\nNo parties.\nNo smoking indoors.\nQuiet hours from 10pm to 8am.\nNo drugs."
+   },
+   "es": {
+    "title": "Habitación doble — Gardiners Hill",
+    "description": "Habitación doble en una casa compartida en Gardiners Hill, Cork, gestionada por DNL.\n\nLos gastos van aparte y se reparten entre los compañeros de casa.\n\nAl entrar: pagas la parte proporcional desde el día de la mudanza hasta el día 30, más la fianza (un mes de alquiler). Después, el alquiler se paga el día 1 de cada mes. Contrato mínimo de 6 meses.",
+    "house_rules": "No se permiten invitados a dormir.\nNo se permiten fiestas.\nProhibido fumar dentro de casa.\nSilencio de 22:00 a 8:00.\nProhibidas las drogas."
+   }
+  }
+ },
+ {
+  "id": 12,
+  "title_pt": "Quarto single — Friars Walk",
+  "description_pt": "Quarto single numa casa compartilhada com 4 quartos em Friars Walk, Cork, gerida pela DNL.\n\nAs contas são à parte, divididas entre os moradores.\n\nNa entrada: você paga o proporcional do dia da mudança até o dia 30, mais o depósito (um mês de aluguel). Depois disso, o aluguel vence todo dia 1º. Contrato mínimo de 6 meses.",
+  "house_rules_pt": "Não é permitido receber visitas para dormir.\nSem festas.\nProibido fumar dentro de casa.\nSilêncio das 22h às 8h.\nProibido o uso de drogas.",
+  "i18n": {
+   "en": {
+    "title": "Single room — Friars Walk",
+    "description": "Single room in a shared house with 4 bedrooms in Friars Walk, Cork, managed by DNL.\n\nBills are extra, split between housemates.\n\nOn move-in: you pay pro-rata rent from your move-in day until the 30th, plus the deposit (one month's rent). After that, rent is due on the 1st of every month. Minimum contract of 6 months.",
+    "house_rules": "No overnight guests.\nNo parties.\nNo smoking indoors.\nQuiet hours from 10pm to 8am.\nNo drugs."
+   },
+   "es": {
+    "title": "Habitación individual — Friars Walk",
+    "description": "Habitación individual en una casa compartida de 4 habitaciones en Friars Walk, Cork, gestionada por DNL.\n\nLos gastos van aparte y se reparten entre los compañeros de casa.\n\nAl entrar: pagas la parte proporcional desde el día de la mudanza hasta el día 30, más la fianza (un mes de alquiler). Después, el alquiler se paga el día 1 de cada mes. Contrato mínimo de 6 meses.",
+    "house_rules": "No se permiten invitados a dormir.\nNo se permiten fiestas.\nProhibido fumar dentro de casa.\nSilencio de 22:00 a 8:00.\nProhibidas las drogas."
+   }
+  }
+ }
+]
