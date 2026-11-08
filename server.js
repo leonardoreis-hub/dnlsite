@@ -409,6 +409,24 @@ app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] })
 app.get('/anuncio/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'listing.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
+// Anúncios novos enviados junto com o código: cada um é criado uma única vez
+// (se for apagado no admin, não volta)
+try {
+  const items = JSON.parse(fs.readFileSync(path.join(__dirname, 'seed', 'listings-seed.json'), 'utf8'));
+  const seen = db.prepare("SELECT 1 FROM settings WHERE key = ?");
+  const mark = db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, '1')");
+  for (const it of items) {
+    const key = 'seed:' + it.seed_key;
+    if (seen.get(key)) continue;
+    const { seed_key, ...data } = it;
+    const o = clean(data);
+    const cols = Object.keys(o);
+    db.prepare(`INSERT INTO listings (${cols.join(',')}) VALUES (${cols.map((c) => '@' + c).join(',')})`).run(o);
+    mark.run(key);
+    console.log('Anúncio criado:', it.title);
+  }
+} catch (e) { if (e.code !== 'ENOENT') console.error('Seed de anúncios:', e.message); }
+
 app.listen(PORT, () => {
   console.log(`${SITE_NAME} rodando em http://localhost:${PORT}`);
   if (!mailer || !NOTIFY_EMAIL) console.log('Aviso: e-mail não configurado (SMTP_HOST / NOTIFY_EMAIL). Pedidos ficam salvos no admin.');

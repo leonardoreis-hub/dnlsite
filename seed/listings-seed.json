@@ -1,0 +1,57 @@
+[
+ {
+  "seed_key": "rosbarra-quarto2",
+  "title": "Suíte single — Friars Walk (Ros Barra)",
+  "type": "Quarto privativo",
+  "area": "Friars Walk, Cork",
+  "address": "17 Ros Barra, Friars Walk, Cork",
+  "lat": 51.89111,
+  "lng": -8.4743,
+  "price": 900,
+  "bills_included": false,
+  "available_from": "2026-11-11",
+  "min_months": 6,
+  "guests": 1,
+  "bedrooms": 1,
+  "bathrooms": 1,
+  "description": "Quarto single com banheiro privativo (suíte) numa casa compartilhada com 7 quartos em Friars Walk, Cork, gerida pela DNL. Todos os quartos da casa têm banheiro próprio, então você não divide banheiro com ninguém.\n\nA casa é reformada e mobiliada: cozinha equipada, sala com TV grande e mesa de jantar, lavanderia com 2 máquinas de lavar e 2 secadoras, e quintal.\n\nO quarto tem cama de solteiro, guarda-roupa e criado-mudo.\n\nAs contas são à parte, divididas entre os moradores.\n\nNa entrada: você paga o proporcional do dia da mudança até o dia 30, mais o depósito (um mês de aluguel). Depois disso, o aluguel vence todo dia 1º. Contrato mínimo de 6 meses.",
+  "house_rules": "Não é permitido receber visitas para dormir.\nSem festas.\nProibido fumar dentro de casa.\nSilêncio das 22h às 8h.\nProibido o uso de drogas.",
+  "amenities": [
+   "Banheiro privativo",
+   "Cozinha",
+   "Máquina de lavar",
+   "Secadora",
+   "Aquecimento",
+   "Guarda-roupa",
+   "Mobiliado",
+   "Jardim",
+   "Smart TV"
+  ],
+  "photos": [
+   "/seed/rosbarra/01-531cf75d.jpg",
+   "/seed/rosbarra/02-12a771a4.jpg",
+   "/seed/rosbarra/03-9224ed32.jpg",
+   "/seed/rosbarra/04-2e9d3166.jpg",
+   "/seed/rosbarra/05-2b54bd52.jpg",
+   "/seed/rosbarra/06-fa868934.jpg",
+   "/seed/rosbarra/07-e7efc7b9.jpg",
+   "/seed/rosbarra/08-4c70a880.jpg",
+   "/seed/rosbarra/09-599bc1bc.jpg",
+   "/seed/rosbarra/10-f13d688d.jpg",
+   "/seed/rosbarra/11-4d03475d.jpg"
+  ],
+  "published": true,
+  "i18n": {
+   "en": {
+    "title": "En-suite single room — Friars Walk (Ros Barra)",
+    "description": "Single room with its own private bathroom (en-suite) in a shared 7-bedroom house in Friars Walk, Cork, managed by DNL. Every room in the house has its own bathroom, so you never share one.\n\nThe house is renovated and furnished: fitted kitchen, living room with a large TV and dining table, laundry room with 2 washing machines and 2 dryers, and a back garden.\n\nThe room has a single bed, a wardrobe and a bedside table.\n\nBills are extra, split between housemates.\n\nOn move-in: you pay pro-rata rent from your move-in day until the 30th, plus the deposit (one month's rent). After that, rent is due on the 1st of every month. Minimum contract of 6 months.",
+    "house_rules": "No overnight guests.\nNo parties.\nNo smoking indoors.\nQuiet hours from 10pm to 8am.\nNo drugs."
+   },
+   "es": {
+    "title": "Habitación individual con baño — Friars Walk (Ros Barra)",
+    "description": "Habitación individual con baño privado en una casa compartida de 7 habitaciones en Friars Walk, Cork, gestionada por DNL. Todas las habitaciones de la casa tienen baño propio, así que no compartes baño con nadie.\n\nLa casa está reformada y amueblada: cocina equipada, salón con televisión grande y mesa de comedor, lavandería con 2 lavadoras y 2 secadoras, y patio trasero.\n\nLa habitación tiene cama individual, armario y mesita de noche.\n\nLos gastos van aparte y se reparten entre los compañeros de casa.\n\nAl entrar: pagas la parte proporcional desde el día de la mudanza hasta el día 30, más la fianza (un mes de alquiler). Después, el alquiler se paga el día 1 de cada mes. Contrato mínimo de 6 meses.",
+    "house_rules": "No se permiten invitados a dormir.\nNo se permiten fiestas.\nProhibido fumar dentro de casa.\nSilencio de 22:00 a 8:00.\nProhibidas las drogas."
+   }
+  }
+ }
+]
