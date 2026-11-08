@@ -281,7 +281,7 @@ function visitsView() {
           <button class="btn btn-ghost btn-sm" data-vdel="${v.id}" style="color:#C13515">Excluir</button>
         </span>
       </div>
-      <div><b>${esc(v.name)}</b> · ${plural(v.people, 'pessoa', 'pessoas')} · <span style="color:var(--muted)">${esc(v.listing_title)}</span></div>
+      <div><b>${esc(v.name)}</b> · ${plural(v.people, 'pessoa', 'pessoas')} · <span style="color:var(--muted)">${esc(v.listing_title)}</span>${v.lang && v.lang !== 'pt' ? ` <span class="chip off">${v.lang === 'en' ? 'Fala inglês' : 'Fala espanhol'}</span>` : ''}</div>
       <div class="meta"><a href="mailto:${esc(v.email)}">${esc(v.email)}</a> · <a href="https://wa.me/${esc(v.phone.replace(/\D/g, ''))}" target="_blank">${esc(v.phone)}</a>
         · <small style="color:var(--muted)">recebido ${new Date(v.created_at.replace(' ', 'T') + 'Z').toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}${v.email_sent ? ' · e-mail enviado' : ''}</small></div>
       ${v.message ? `<div class="msg">${esc(v.message)}</div>` : ''}
@@ -337,6 +337,18 @@ function openEditor(l) {
       <label class="field"><span>Regras da casa (opcional)</span><textarea name="house_rules" rows="3" placeholder="Ex.: Não fumantes. Sem animais. Visitas até 22h.">${esc(e.house_rules)}</textarea></label>
     </div>
 
+    <h4>Traduções <small style="font-weight:400;color:var(--muted)">(o site mostra no idioma do visitante; em branco = mostra em português)</small></h4>
+    <div class="am" id="trTabs">
+      <label><input type="radio" name="trlang" value="en" checked>🇬🇧 Inglês</label>
+      <label><input type="radio" name="trlang" value="es">🇪🇸 Espanhol</label>
+    </div>
+    ${['en', 'es'].map((lg) => { const x = (e.i18n || {})[lg] || {}; return `
+    <div class="stack tr" data-lg="${lg}" style="margin-top:12px${lg === 'en' ? '' : ';display:none'}">
+      <label class="field"><span>Título (${lg.toUpperCase()})</span><input data-tr="${lg}.title" value="${esc(x.title || '')}"></label>
+      <label class="field"><span>Sobre o espaço (${lg.toUpperCase()})</span><textarea data-tr="${lg}.description" rows="5">${esc(x.description || '')}</textarea></label>
+      <label class="field"><span>Regras da casa (${lg.toUpperCase()})</span><textarea data-tr="${lg}.house_rules" rows="3">${esc(x.house_rules || '')}</textarea></label>
+    </div>`; }).join('')}
+
     <h4>Comodidades</h4>
     <div class="am">${Object.keys(AMENITIES).map((a) => `<label><input type="checkbox" name="am" value="${esc(a)}"${e.amenities.includes(a) ? ' checked' : ''}>${esc(a)}</label>`).join('')}</div>
 
@@ -367,6 +379,7 @@ function openEditor(l) {
   $('#ed').classList.add('open'); document.body.style.overflow = 'hidden';
   const close = () => { $('#ed').classList.remove('open'); document.body.style.overflow = ''; };
   $('#edX').onclick = close; $('#edCancel').onclick = close;
+  $('#trTabs').onchange = (ev) => document.querySelectorAll('.tr').forEach((x) => x.style.display = x.dataset.lg === ev.target.value ? '' : 'none');
   renderPhotos();
 
   // Agenda própria do quarto
@@ -447,7 +460,9 @@ async function save() {
     photos: editing.photos, lat: editing.lat, lng: editing.lng,
     schedule: editing.schedule ? { days: editing.schedule.days, blocked: editing.schedule.blocked } : null,
   };
-  delete body.am; delete body.schmode;
+  body.i18n = { en: {}, es: {} };
+  document.querySelectorAll('[data-tr]').forEach((x) => { const [lg, f] = x.dataset.tr.split('.'); body.i18n[lg][f] = x.value; });
+  delete body.am; delete body.schmode; delete body.trlang;
   const btn = $('#save'); btn.disabled = true; btn.textContent = 'Salvando…';
   try {
     if (editing.id) await api('/api/admin/listings/' + editing.id, { method: 'PUT', body });

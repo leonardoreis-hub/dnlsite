@@ -20,7 +20,7 @@
 
 <!-- Modal de agendamento (mobile) -->
 <div class="modal" id="schedModal"><div class="sheet">
-  <div class="sheet-h"><button class="x" data-close aria-label="Fechar"></button>Agendar visita</div>
+  <div class="sheet-h"><button class="x" data-close aria-label="Close"></button><span id="schedTitle"></span></div>
   <div class="sheet-b" id="schedMobile"></div>
 </div></div>
 
@@ -41,6 +41,7 @@ document.getElementById('hdr').innerHTML = headerHTML();
 document.getElementById('ftr').innerHTML = footerHTML();
 const $ = (s, r = document) => r.querySelector(s);
 const id = location.pathname.split('/').pop();
+$('#schedTitle').textContent = t('book');
 let L, lbIndex = 0;
 
 // Horários livres vêm da agenda configurada no admin
@@ -51,29 +52,29 @@ const slotsHTML = (date) => {
 };
 
 function scheduleForm(prefix) {
-  if (!AV.length) return `<div class="done"><p>No momento não há horários livres para visita.<br>Fale com a gente pelo WhatsApp para combinar outro dia.</p></div>`;
+  if (!AV.length) return `<div class="done"><p>${t('noSlots')}</p></div>`;
   const first = AV[0];
   return `
   <form class="space sched" data-p="${prefix}" novalidate>
     <div class="fgroup">
-      <label class="field"><span>Data da visita</span>
-        <select name="date" required>${AV.map((d) => `<option value="${d.date}">${new Date(d.date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '')}</option>`).join('')}</select></label>
-      <label class="field"><span>Pessoas</span>
-        <select name="people">${[1, 2, 3, 4].map((n) => `<option value="${n}">${plural(n, 'pessoa', 'pessoas')}</option>`).join('')}</select></label>
+      <label class="field"><span>${t('date')}</span>
+        <select name="date" required>${AV.map((d) => `<option value="${d.date}">${dShort(d.date, { weekday: 'short', day: 'numeric', month: 'short' })}</option>`).join('')}</select></label>
+      <label class="field"><span>${t('peopleL')}</span>
+        <select name="people">${[1, 2, 3, 4].map((n) => `<option value="${n}">${pl(n, 'person')}</option>`).join('')}</select></label>
     </div>
-    <div class="slot-label">Horário</div>
+    <div class="slot-label">${t('time')}</div>
     <div class="slots">${slotsHTML(first.date)}</div>
     <input type="hidden" name="time" value="${first.times[0]}">
     <div class="fgroup">
-      <label class="field"><span>Nome completo</span><input name="name" required autocomplete="name"></label>
-      <label class="field"><span>E-mail</span><input name="email" type="email" required autocomplete="email"></label>
-      <label class="field"><span>Telefone / WhatsApp</span><input name="phone" type="tel" required autocomplete="tel" placeholder="+353"></label>
-      <label class="field"><span>Mensagem (opcional)</span><textarea name="message" rows="2" placeholder="Conte um pouco sobre você"></textarea></label>
+      <label class="field"><span>${t('name')}</span><input name="name" required autocomplete="name"></label>
+      <label class="field"><span>${t('email')}</span><input name="email" type="email" required autocomplete="email"></label>
+      <label class="field"><span>${t('phone')}</span><input name="phone" type="tel" required autocomplete="tel" placeholder="+353"></label>
+      <label class="field"><span>${t('msg')}</span><textarea name="message" rows="2" placeholder="${t('msgPh')}"></textarea></label>
     </div>
     <input class="hp" name="website" tabindex="-1" autocomplete="off">
     <div class="err" hidden></div>
-    <button class="btn btn-brand btn-block" type="submit">Agendar visita</button>
-    <p class="tiny" style="margin:0">Visita gratuita e sem compromisso</p>
+    <button class="btn btn-brand btn-block" type="submit">${t('book')}</button>
+    <p class="tiny" style="margin:0">${t('free')}</p>
   </form>`;
 }
 
@@ -93,56 +94,57 @@ function bindForms() {
       e.preventDefault();
       const err = $('.err', f), btn = $('button[type=submit]', f);
       const data = Object.fromEntries(new FormData(f));
-      if (!data.name.trim() || !data.email.trim() || !data.phone.trim()) { err.hidden = false; err.textContent = 'Preencha nome, e-mail e telefone.'; return; }
-      if (!/^\S+@\S+\.\S+$/.test(data.email)) { err.hidden = false; err.textContent = 'Confira o e-mail.'; return; }
-      err.hidden = true; btn.disabled = true; btn.textContent = 'Enviando…';
+      if (!data.name.trim() || !data.email.trim() || !data.phone.trim()) { err.hidden = false; err.textContent = t('fillReq'); return; }
+      if (!/^\S+@\S+\.\S+$/.test(data.email)) { err.hidden = false; err.textContent = t('checkEmail'); return; }
+      err.hidden = true; btn.disabled = true; btn.textContent = t('sending');
       try {
-        await api('/api/visits', { method: 'POST', body: { ...data, listing_id: L.id } });
-        const when = new Date(data.date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
-        f.outerHTML = `<div class="done"><div class="ok">${I.check}</div><h4>Pedido enviado!</h4>
-          <p>Recebemos seu pedido de visita para <b style="color:#222">${when} às ${esc(data.time)}</b>. Vamos confirmar pelo WhatsApp ou e-mail.</p></div>`;
+        await api('/api/visits', { method: 'POST', body: { ...data, listing_id: L.id, lang: LANG } });
+        const when = dShort(data.date, { weekday: 'long', day: 'numeric', month: 'long' });
+        f.outerHTML = `<div class="done"><div class="ok">${I.check}</div><h4>${t('sentTitle')}</h4>
+          <p>${t('sentBody', { when: `<b style="color:#222">${when}`, time: `${esc(data.time)}</b>` })}</p></div>`;
       } catch (ex) {
         if (ex.status === 409) { // horário ocupado: atualiza a lista
           try { AV = (await api('/api/schedule/' + L.id)).available || []; $('.slots', f).innerHTML = slotsHTML(f.date.value); const d = AV.find((x) => x.date === f.date.value); f.time.value = d ? d.times[0] : ''; } catch {}
         }
-        err.hidden = false; err.textContent = ex.message; btn.disabled = false; btn.textContent = 'Agendar visita';
+        err.hidden = false; err.textContent = ex.status === 409 ? t('slotTaken') : (LANG === 'pt' ? ex.message : t('genericErr')); btn.disabled = false; btn.textContent = t('book');
       }
     });
   });
 }
 
 function rentedHTML() {
-  return `<div class="rented-box"><div class="ok">${I.key}</div><h4>Este quarto já foi alugado</h4>
-    <p>Temos outros quartos disponíveis esperando por você.</p>
-    <a class="btn btn-brand btn-block" href="/">Ver quartos disponíveis</a></div>`;
+  return `<div class="rented-box"><div class="ok">${I.key}</div><h4>${t('rentedTitle')}</h4>
+    <p>${t('rentedSub')}</p>
+    <a class="btn btn-brand btn-block" href="${withLang('/')}">${t('seeAvailRooms')}</a></div>`;
 }
 
 function galleryHTML(p) {
   const n = Math.min(p.length, 5);
   if (!n) return `<div class="gallery n1"><div style="display:grid;place-items:center;color:#bbb;background:#f7f7f7">${I.house.replace('<svg', '<svg width="64"')}</div></div>`;
   return `<div class="gallery n${n}">
-    ${p.slice(0, 5).map((src, i) => `<button class="g${i}" data-i="${i}"><img src="${esc(src)}" alt="Foto ${i + 1}"></button>`).join('')}
-    ${p.length > 1 ? `<button class="all" id="showAll">${I.grid} Mostrar todas as fotos</button>` : ''}
+    ${p.slice(0, 5).map((src, i) => `<button class="g${i}" data-i="${i}"><img src="${esc(src)}" alt="${t('photo')} ${i + 1}"></button>`).join('')}
+    ${p.length > 1 ? `<button class="all" id="showAll">${I.grid} ${t('showAll')}</button>` : ''}
   </div>`;
 }
 
 function render() {
-  document.title = `${L.title} · DNL Management`;
+  const TITLE = lt(L, 'title'), DESC = lt(L, 'description'), RULES = lt(L, 'house_rules');
+  document.title = `${TITLE} · DNL Management`;
   const hasBath = L.amenities.includes('Banheiro privativo');
   const highlights = [
-    [I.key, L.type, L.type.startsWith('Quarto') ? 'Seu quarto com áreas comuns compartilhadas.' : 'O espaço inteiro só para você.'],
-    [I.calendar, availText(L.available_from), L.min_months ? `Contrato mínimo de ${plural(L.min_months, 'mês', 'meses')}.` : 'Contrato flexível.'],
-    L.bills_included ? [I.bolt, 'Contas incluídas', 'Luz, gás e internet já estão no valor do aluguel.'] : [I.bolt, 'Contas à parte', 'As contas são divididas entre os moradores.'],
+    [I.key, tType(L.type), L.type.startsWith('Quarto') ? t('hlRoom') : t('hlWhole')],
+    [I.calendar, availText(L.available_from), L.min_months ? t('minContract', { m: pl(L.min_months, 'month') }) : t('flexContract')],
+    L.bills_included ? [I.bolt, t('billsIncT'), t('billsIncD')] : [I.bolt, t('billsSepT'), t('billsSepD')],
   ];
-  const facts = [plural(L.guests || 1, 'pessoa', 'pessoas'), plural(L.bedrooms || 1, 'quarto', 'quartos'), plural(L.bathrooms || 1, hasBath ? 'banheiro privativo' : 'banheiro', hasBath ? 'banheiros privativos' : 'banheiros')].join(' · ');
+  const facts = [pl(L.guests || 1, 'person'), pl(L.bedrooms || 1, 'bedroom'), pl(L.bathrooms || 1, hasBath ? 'privBath' : 'bathroom')].join(' · ');
 
   $('#page').innerHTML = `
   <div class="lwrap">
     <div class="l-title">
-      <h1>${esc(L.title)}</h1>
+      <h1>${esc(TITLE)}</h1>
       <div class="l-actions">
-        <button class="btn btn-ghost" id="share">${I.share} Compartilhar</button>
-        <button class="btn btn-ghost" id="favBtn"><span style="display:inline-flex;width:16px">${I.heart.replace('<svg', `<svg width="16" style="fill:${favs.has(L.id) ? 'var(--brand)' : 'none'};stroke:#222;stroke-width:2.5"`)}</span> Salvar</button>
+        <button class="btn btn-ghost" id="share">${I.share} ${t('share')}</button>
+        <button class="btn btn-ghost" id="favBtn"><span style="display:inline-flex;width:16px">${I.heart.replace('<svg', `<svg width="16" style="fill:${favs.has(L.id) ? 'var(--brand)' : 'none'};stroke:#222;stroke-width:2.5"`)}</span> ${t('save')}</button>
       </div>
     </div>
   </div>
@@ -151,32 +153,32 @@ function render() {
     <div class="l-body">
       <div>
         <div class="sec l-head">
-          <h2>${esc(L.type)} em ${esc(L.area || 'Cork')}</h2>
+          <h2>${esc(t('typeIn', { type: tType(L.type), area: L.area || 'Cork' }))}</h2>
           <p>${facts}</p>
         </div>
         <div class="sec"><div class="hl">${highlights.map(([ic, b, s]) => `<div>${ic}<span><b>${esc(b)}</b><small>${esc(s)}</small></span></div>`).join('')}</div></div>
-        ${L.description ? `<div class="sec"><h3>Sobre este espaço</h3><div class="desc">${esc(L.description)}</div></div>` : ''}
-        ${L.amenities.length ? `<div class="sec"><h3>O que este lugar oferece</h3>
-          <div class="amen">${L.amenities.map((a) => `<div>${AMENITIES[a] || I.dot}<span>${esc(a)}</span></div>`).join('')}</div></div>` : ''}
-        ${L.house_rules ? `<div class="sec"><h3>Regras da casa</h3><div class="desc">${esc(L.house_rules)}</div></div>` : ''}
+        ${DESC ? `<div class="sec"><h3>${t('about')}</h3><div class="desc">${esc(DESC)}</div></div>` : ''}
+        ${L.amenities.length ? `<div class="sec"><h3>${t('offers')}</h3>
+          <div class="amen">${L.amenities.map((a) => `<div>${AMENITIES[a] || I.dot}<span>${esc(tAmen(a))}</span></div>`).join('')}</div></div>` : ''}
+        ${RULES ? `<div class="sec"><h3>${t('rules')}</h3><div class="desc">${esc(RULES)}</div></div>` : ''}
       </div>
       <div class="bookbox-wrap desktop">
         <div class="bookbox">
-          ${L.rented ? rentedHTML() : `<div class="pr"><b>${eur(L.price)}</b><span>mês</span><small>${L.bills_included ? 'contas inclusas' : '+ contas'}</small></div>
+          ${L.rented ? rentedHTML() : `<div class="pr"><b>${eur(L.price)}</b><span>${t('month')}</span><small>${L.bills_included ? t('billsInc') : t('plusBills')}</small></div>
           <div id="schedDesk"></div>`}
         </div>
       </div>
     </div>
     <div class="sec" style="border-top:1px solid var(--line)">
-      <h3>Onde você vai morar</h3>
+      <h3>${t('whereLive')}</h3>
       ${L.lat && L.lng ? '<div id="map"></div>' : ''}
-      <div class="map-note"><b>${esc(L.area || 'Cork')}, Irlanda</b>
-        <p>A localização exata é enviada após a confirmação da visita.</p></div>
+      <div class="map-note"><b>${esc(L.area || 'Cork')}, ${t('ireland')}</b>
+        <p>${t('exactLoc')}</p></div>
     </div>
   </div>
-  <div class="mbar">${L.rented ? `<div><b>Alugado</b><small>Este quarto já foi alugado</small></div>
-    <a class="btn btn-brand" href="/">Ver disponíveis</a>` : `<div><b>${eur(L.price)}</b> mês<small>${availText(L.available_from)}</small></div>
-    <button class="btn btn-brand" id="openSched">Agendar visita</button>`}</div>`;
+  <div class="mbar">${L.rented ? `<div><b>${t('rented')}</b><small>${t('rentedTitle')}</small></div>
+    <a class="btn btn-brand" href="${withLang('/')}">${t('seeAvail')}</a>` : `<div><b>${eur(L.price)}</b> ${t('month')}<small>${availText(L.available_from)}</small></div>
+    <button class="btn btn-brand" id="openSched">${t('book')}</button>`}</div>`;
 
   if (!L.rented) $('#schedDesk').innerHTML = scheduleForm('d');
   $('#schedMobile').innerHTML = scheduleForm('m');
@@ -194,15 +196,16 @@ function render() {
 
   // Ações
   $('#share').onclick = async () => {
-    try { if (navigator.share) await navigator.share({ title: L.title, url: location.href }); else { await navigator.clipboard.writeText(location.href); toast('Link copiado'); } } catch {}
+    const u = new URL(location.href); u.searchParams.set('lang', LANG);
+    try { if (navigator.share) await navigator.share({ title: TITLE, url: u.toString() }); else { await navigator.clipboard.writeText(u.toString()); toast(t('linkCopied')); } } catch {}
   };
-  $('#favBtn').onclick = () => { const on = favs.toggle(L.id); $('#favBtn svg').style.fill = on ? 'var(--brand)' : 'none'; toast(on ? 'Salvo nos favoritos' : 'Removido dos favoritos'); };
+  $('#favBtn').onclick = () => { const on = favs.toggle(L.id); $('#favBtn svg').style.fill = on ? 'var(--brand)' : 'none'; toast(on ? t('favSaved') : t('favRemoved')); };
   if ($('#openSched')) $('#openSched').onclick = () => $('#schedModal').classList.add('open');
   document.querySelectorAll('[data-close]').forEach((b) => { b.innerHTML = I.x; b.onclick = () => b.closest('.modal').classList.remove('open'); });
   $('#schedModal').onclick = (e) => { if (e.target.id === 'schedModal') e.currentTarget.classList.remove('open'); };
 
   // Fotos
-  $('#allList').innerHTML = L.photos.map((p, i) => `<img src="${esc(p)}" data-i="${i}" alt="Foto ${i + 1}" loading="lazy">`).join('');
+  $('#allList').innerHTML = L.photos.map((p, i) => `<img src="${esc(p)}" data-i="${i}" alt="${t('photo')} ${i + 1}" loading="lazy">`).join('');
   $('#closeAll').innerHTML = I.left.replace('<svg', '<svg width="16" height="16"');
   const openAll = () => { $('#allPhotos').classList.add('open'); document.body.style.overflow = 'hidden'; };
   $('#closeAll').onclick = () => { $('#allPhotos').classList.remove('open'); document.body.style.overflow = ''; };
@@ -216,7 +219,7 @@ function openLb(i) {
   $('#lbi').src = L.photos[lbIndex]; $('#lbt').textContent = `${lbIndex + 1} / ${L.photos.length}`;
   $('#lb').classList.add('open'); document.body.style.overflow = 'hidden';
 }
-$('#lbx').innerHTML = I.x.replace('stroke="currentColor"', 'stroke="#fff"') + ' Fechar';
+$('#lbx').innerHTML = I.x.replace('stroke="currentColor"', 'stroke="#fff"') + ' ' + t('close');
 $('#lbp').innerHTML = I.left.replace('<svg', '<svg width="16" height="16"');
 $('#lbn').innerHTML = I.right.replace('<svg', '<svg width="16" height="16"');
 $('#lbx').onclick = () => { $('#lb').classList.remove('open'); if (!$('#allPhotos').classList.contains('open')) document.body.style.overflow = ''; };
@@ -228,7 +231,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 Promise.all([api('/api/listings/' + id), api('/api/schedule/' + id).catch(() => ({ available: [] }))]).then(([r, s]) => { L = r; AV = s.available || []; render(); }).catch(() => {
-  $('#page').innerHTML = `<div class="lwrap empty"><h2>Anúncio não encontrado</h2><p>Ele pode ter sido removido.</p><p style="margin-top:20px"><a class="btn btn-dark" href="/">Ver todos os espaços</a></p></div>`;
+  $('#page').innerHTML = `<div class="lwrap empty"><h2>${t('notFound')}</h2><p>${t('removed')}</p><p style="margin-top:20px"><a class="btn btn-dark" href="${withLang('/')}">${t('seeAll')}</a></p></div>`;
 });
 </script>
 </body>

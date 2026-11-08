@@ -244,3 +244,19 @@ input, select, textarea { font: inherit; color: inherit; }
 .rented-box .ok { width: 56px; height: 56px; border-radius: 50%; background: var(--bg-soft); color: var(--ink); display: grid; place-items: center; margin: 0 auto 14px; }
 .rented-box h4 { font-size: 20px; margin: 0 0 6px; }
 .rented-box p { color: var(--muted); margin: 0 0 18px; }
+
+/* Seletor de idioma */
+.lang { display: inline-flex; border: 1px solid var(--line); border-radius: 20px; padding: 3px; background: #fff; }
+.lang button { border: 0; background: none; font-size: 12px; font-weight: 700; padding: 6px 10px; border-radius: 16px; color: var(--muted); letter-spacing: .3px; }
+.lang button:hover { color: var(--ink); }
+.lang button.on { background: var(--ink); color: #fff; }
+.pill-link { white-space: nowrap; }
+.header-right { margin-left: auto; }
+@media (max-width: 1180px) { .header .search ~ .header-right .pill-link { display: none; } }
+@media (max-width: 760px) {
+  .header .wrap { flex-wrap: wrap; }
+  .header .header-right { order: 2; }
+  .lang button { padding: 5px 8px; font-size: 11px; }
+  .logo { font-size: 18px; }
+  .logo img { width: 34px; height: 34px; }
+}

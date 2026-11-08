@@ -22,12 +22,13 @@
 <script>
 document.getElementById('hdr').innerHTML = headerHTML({ search: true });
 document.getElementById('ftr').innerHTML = footerHTML();
+document.title = { pt: 'DNL Management · Quartos para alugar em Cork e Dublin', en: 'DNL Management · Rooms to rent in Cork and Dublin', es: 'DNL Management · Habitaciones en alquiler en Cork y Dublín' }[LANG];
 
 let all = [], cat = 'Todos';
 const $ = (s) => document.querySelector(s);
 
-$('#cats').innerHTML = TYPES.map((t) =>
-  `<button class="cat${t.k === cat ? ' active' : ''}" data-k="${t.k}">${I[t.icon]}<span>${t.k === 'Todos' ? 'Todos' : t.k}</span></button>`).join('');
+$('#cats').innerHTML = TYPES.map((x) =>
+  `<button class="cat${x.k === cat ? ' active' : ''}" data-k="${x.k}">${I[x.icon]}<span>${tType(x.k)}</span></button>`).join('');
 $('#cats').addEventListener('click', (e) => {
   const b = e.target.closest('.cat'); if (!b) return;
   cat = b.dataset.k;
@@ -47,21 +48,21 @@ function cardHTML(l) {
   const photos = l.photos.length ? l.photos.slice(0, 8) : [null];
   const isNew = (Date.now() - new Date(l.created_at.replace(' ', 'T') + 'Z')) < 14 * 864e5;
   return `
-  <a class="card${l.rented ? ' rented' : ''}" href="/anuncio/${l.id}" data-id="${l.id}">
+  <a class="card${l.rented ? ' rented' : ''}" href="${withLang('/anuncio/' + l.id)}" data-id="${l.id}">
     <div class="media">
       <div class="track">${photos.map((p) => p ? `<img src="${esc(p)}" alt="" loading="lazy">` : `<div style="width:100%;flex-shrink:0;display:grid;place-items:center;color:#bbb">${I.house.replace('<svg', '<svg width="48"')}</div>`).join('')}</div>
-      ${l.rented ? '<span class="badge badge-rented">Alugado</span>' : isNew ? '<span class="badge">Novo</span>' : ''}
-      <button class="fav${favs.has(l.id) ? ' on' : ''}" aria-label="Favoritar">${I.heart}</button>
+      ${l.rented ? `<span class="badge badge-rented">${t('rented')}</span>` : isNew ? `<span class="badge">${t('isNew')}</span>` : ''}
+      <button class="fav${favs.has(l.id) ? ' on' : ''}" aria-label="${t('fav')}">${I.heart}</button>
       ${photos.length > 1 ? `
-        <button class="nav prev" aria-label="Anterior" style="display:none">${I.left}</button>
-        <button class="nav next" aria-label="Próxima">${I.right}</button>
+        <button class="nav prev" aria-label="${t('prev')}" style="display:none">${I.left}</button>
+        <button class="nav next" aria-label="${t('next')}">${I.right}</button>
         <div class="dots">${photos.slice(0, 5).map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>` : ''}
     </div>
     <div class="info">
-      <div class="row1"><span class="t">${esc(l.type)} em ${esc(l.area || 'Cork')}</span></div>
-      <div class="sub">${esc(l.title)}</div>
-      <div class="sub">${l.rented ? 'Já foi alugado' : availText(l.available_from)}</div>
-      <div class="price">${l.rented ? '<b>Alugado</b>' : `<b>${eur(l.price)}</b> mês${l.bills_included ? ' · contas inclusas' : ''}`}</div>
+      <div class="row1"><span class="t">${esc(t('typeIn', { type: tType(l.type), area: l.area || 'Cork' }))}</span></div>
+      <div class="sub">${esc(lt(l, 'title'))}</div>
+      <div class="sub">${l.rented ? t('rentedLine') : availText(l.available_from)}</div>
+      <div class="price">${l.rented ? `<b>${t('rented')}</b>` : `<b>${eur(l.price)}</b> ${t('month')}${l.bills_included ? ' · ' + t('billsInc') : ''}`}</div>
     </div>
   </a>`;
 }
@@ -72,7 +73,7 @@ function filtered() {
   const when = $('#qwhen').value;
   return all.filter((l) => {
     if (cat !== 'Todos' && l.type !== cat) return false;
-    if (q && !`${l.title} ${l.area} ${l.address} ${l.description}`.toLowerCase().includes(q)) return false;
+    if (q && !`${l.title} ${lt(l, 'title')} ${l.area} ${l.address} ${lt(l, 'description')}`.toLowerCase().includes(q)) return false;
     if (l.rented && (max !== Infinity || when !== '')) return false;
     if (l.price > max) return false;
     if (when !== '') {
@@ -88,8 +89,8 @@ function render() {
   const list = filtered();
   if (!list.length) {
     $('#grid').innerHTML = `<div class="empty" style="grid-column:1/-1">
-      <h2>${all.length ? 'Nenhum espaço encontrado' : 'Em breve, novos espaços'}</h2>
-      <p>${all.length ? 'Tente mudar os filtros ou remover alguns deles.' : 'Estamos preparando os anúncios. Volte em breve.'}</p></div>`;
+      <h2>${all.length ? t('noneFound') : t('soon')}</h2>
+      <p>${all.length ? t('tryFilters') : t('preparing')}</p></div>`;
     return;
   }
   $('#grid').innerHTML = list.map(cardHTML).join('');
@@ -103,7 +104,7 @@ $('#grid').addEventListener('click', (e) => {
     e.preventDefault();
     const on = favs.toggle(+card.dataset.id);
     fav.classList.toggle('on', on);
-    toast(on ? 'Salvo nos favoritos' : 'Removido dos favoritos');
+    toast(on ? t('favSaved') : t('favRemoved'));
     return;
   }
   const nav = e.target.closest('.nav'); if (!nav) return;
@@ -119,7 +120,7 @@ $('#grid').addEventListener('click', (e) => {
 });
 
 skeleton();
-api('/api/listings').then((r) => { all = r; render(); }).catch(() => { $('#grid').innerHTML = '<div class="empty" style="grid-column:1/-1"><h2>Não foi possível carregar</h2><p>Atualize a página.</p></div>'; });
+api('/api/listings').then((r) => { all = r; render(); }).catch(() => { $('#grid').innerHTML = `<div class="empty" style="grid-column:1/-1"><h2>${t('loadFail')}</h2><p>${t('refresh')}</p></div>`; });
 </script>
 </body>
 </html>

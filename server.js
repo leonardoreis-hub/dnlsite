@@ -62,6 +62,8 @@ CREATE TABLE IF NOT EXISTS visits (
 try { db.exec('ALTER TABLE listings ADD COLUMN schedule TEXT'); } catch {} // agenda própria do quarto (opcional)
 try { db.exec('ALTER TABLE listings ADD COLUMN rented INTEGER NOT NULL DEFAULT 0'); } catch {} // quarto já alugado
 try { db.exec('ALTER TABLE listings ADD COLUMN rented_at TEXT'); } catch {}
+try { db.exec('ALTER TABLE listings ADD COLUMN i18n TEXT'); } catch {} // traduções EN/ES de título, descrição e regras
+try { db.exec('ALTER TABLE visits ADD COLUMN lang TEXT'); } catch {}
 
 const parseListing = (r) => r && ({
   ...r,
@@ -71,6 +73,7 @@ const parseListing = (r) => r && ({
   amenities: JSON.parse(r.amenities || '[]'),
   photos: JSON.parse(r.photos || '[]'),
   schedule: r.schedule ? JSON.parse(r.schedule) : null,
+  i18n: r.i18n ? JSON.parse(r.i18n) : {},
 });
 
 // ---------- E-mail ----------
@@ -98,6 +101,7 @@ async function notifyVisit(v, listing) {
       <tr><td style="padding:8px 0;color:#717171">E-mail</td><td><a href="mailto:${esc(v.email)}">${esc(v.email)}</a></td></tr>
       <tr><td style="padding:8px 0;color:#717171">Telefone</td><td><a href="https://wa.me/${esc(String(v.phone).replace(/\D/g, ''))}">${esc(v.phone)}</a></td></tr>
       <tr><td style="padding:8px 0;color:#717171">Pessoas</td><td>${esc(v.people)}</td></tr>
+      ${v.lang && v.lang !== 'pt' ? `<tr><td style="padding:8px 0;color:#717171">Idioma</td><td>${v.lang === 'en' ? 'Inglês — responda em inglês' : 'Espanhol — responda em espanhol'}</td></tr>` : ''}
       ${v.message ? `<tr><td style="padding:8px 0;color:#717171;vertical-align:top">Mensagem</td><td>${esc(v.message)}</td></tr>` : ''}
     </table>
     ${listing?.address ? `<p style="margin-top:20px;color:#717171">Endereço: ${esc(listing.address)}</p>` : ''}
@@ -275,9 +279,10 @@ app.post('/api/visits', async (req, res) => {
     name: String(b.name).slice(0, 120), email: String(b.email).slice(0, 160), phone: String(b.phone).slice(0, 40),
     date: String(b.date).slice(0, 10), time: String(b.time).slice(0, 5),
     people: Math.max(1, Math.min(10, parseInt(b.people) || 1)), message: String(b.message || '').slice(0, 2000),
+    lang: ['pt', 'en', 'es'].includes(b.lang) ? b.lang : 'pt',
   };
-  const info = db.prepare(`INSERT INTO visits (listing_id, listing_title, name, email, phone, date, time, people, message)
-    VALUES (@listing_id, @listing_title, @name, @email, @phone, @date, @time, @people, @message)`).run(v);
+  const info = db.prepare(`INSERT INTO visits (listing_id, listing_title, name, email, phone, date, time, people, message, lang)
+    VALUES (@listing_id, @listing_title, @name, @email, @phone, @date, @time, @people, @message, @lang)`).run(v);
   hits.push(now); visitHits.set(ip, hits);
   let sent = false;
   try { sent = await notifyVisit(v, listing); } catch (e) { console.error('Falha ao enviar e-mail:', e.message); }
@@ -287,7 +292,7 @@ app.post('/api/visits', async (req, res) => {
 
 // --- Admin: anúncios ---
 const FIELDS = ['title', 'type', 'area', 'address', 'lat', 'lng', 'price', 'bills_included', 'available_from', 'min_months',
-  'guests', 'bedrooms', 'bathrooms', 'description', 'amenities', 'house_rules', 'photos', 'published', 'schedule', 'rented'];
+  'guests', 'bedrooms', 'bathrooms', 'description', 'amenities', 'house_rules', 'photos', 'published', 'schedule', 'rented', 'i18n'];
 function clean(b) {
   const o = {};
   for (const f of FIELDS) if (f in b) o[f] = b[f];
@@ -299,6 +304,15 @@ function clean(b) {
   }
   if ('bills_included' in o) o.bills_included = o.bills_included ? 1 : 0;
   if ('published' in o) o.published = o.published ? 1 : 0;
+  if ('i18n' in o) {
+    const src = o.i18n && typeof o.i18n === 'object' ? o.i18n : {}, out = {};
+    for (const lg of ['en', 'es']) {
+      const x = src[lg] || {}, y = {};
+      for (const f of ['title', 'description', 'house_rules']) if (String(x[f] || '').trim()) y[f] = String(x[f]).slice(0, 8000);
+      if (Object.keys(y).length) out[lg] = y;
+    }
+    o.i18n = JSON.stringify(out);
+  }
   if ('rented' in o) { o.rented = o.rented ? 1 : 0; o.rented_at = o.rented ? new Date().toISOString().slice(0, 10) : null; }
   for (const n of ['lat', 'lng', 'bathrooms']) if (n in o) o[n] = o[n] === '' || o[n] == null ? null : Number(o[n]);
   for (const n of ['price', 'min_months', 'guests', 'bedrooms']) if (n in o) o[n] = parseInt(o[n]) || 0;

@@ -53,16 +53,89 @@ const TYPES = [
 ];
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const eur = (n) => '€' + Number(n || 0).toLocaleString('pt-BR');
-const fmtDate = (iso) => {
-  if (!iso) return '';
-  const d = new Date(iso + 'T12:00:00');
-  return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' }).replace(' de ', ' ').replace('.', '');
+
+// ---------- Idiomas (PT · EN · ES) ----------
+const LANGS = { pt: 'PT', en: 'EN', es: 'ES' };
+const LOCALE = { pt: 'pt-BR', en: 'en-IE', es: 'es-ES' };
+const LANG = (() => {
+  const q = new URLSearchParams(location.search).get('lang');
+  if (q && LANGS[q]) { try { localStorage.setItem('dnl-lang', q); } catch {} return q; }
+  try { const s = localStorage.getItem('dnl-lang'); if (s && LANGS[s]) return s; } catch {}
+  const n = (navigator.languages || [navigator.language || 'en']).map((x) => String(x).slice(0, 2).toLowerCase());
+  return n.find((x) => LANGS[x]) || 'en';
+})();
+document.documentElement.lang = { pt: 'pt-BR', en: 'en', es: 'es' }[LANG];
+
+const DICT = {
+  where: ['Onde', 'Where', 'Dónde'], searchPh: ['Buscar bairro ou endereço', 'Search area or address', 'Buscar zona o dirección'],
+  maxPrice: ['Preço máximo', 'Max price', 'Precio máximo'], anyPrice: ['Qualquer valor', 'Any price', 'Cualquier precio'],
+  moveIn: ['Mudança', 'Move-in', 'Mudanza'], anyDate: ['Qualquer data', 'Any date', 'Cualquier fecha'],
+  now: ['Agora', 'Now', 'Ahora'], next30: ['Próximos 30 dias', 'Next 30 days', 'Próximos 30 días'], next90: ['Próximos 3 meses', 'Next 3 months', 'Próximos 3 meses'],
+  search: ['Buscar', 'Search', 'Buscar'], seeSpaces: ['Ver espaços', 'See rooms', 'Ver habitaciones'],
+  ireland: ['Irlanda', 'Ireland', 'Irlanda'], seeAll: ['Ver todos os espaços', 'See all rooms', 'Ver todas las habitaciones'],
+  all: ['Todos', 'All', 'Todos'], typeIn: ['{type} em {area}', '{type} in {area}', '{type} en {area}'],
+  availNow: ['Disponível agora', 'Available now', 'Disponible ahora'], availFrom: ['Disponível a partir de {d}', 'Available from {d}', 'Disponible desde el {d}'],
+  rentedLine: ['Já foi alugado', 'Already rented', 'Ya alquilada'], rented: ['Alugado', 'Rented', 'Alquilada'], isNew: ['Novo', 'New', 'Nuevo'],
+  month: ['mês', 'month', 'mes'], billsInc: ['contas inclusas', 'bills included', 'gastos incluidos'], plusBills: ['+ contas', '+ bills', '+ gastos'],
+  noneFound: ['Nenhum espaço encontrado', 'No rooms found', 'No se encontraron habitaciones'],
+  tryFilters: ['Tente mudar os filtros ou remover alguns deles.', 'Try changing or removing some filters.', 'Prueba a cambiar o quitar algunos filtros.'],
+  soon: ['Em breve, novos espaços', 'New rooms coming soon', 'Pronto, nuevas habitaciones'],
+  preparing: ['Estamos preparando os anúncios. Volte em breve.', 'We are preparing the listings. Check back soon.', 'Estamos preparando los anuncios. Vuelve pronto.'],
+  loadFail: ['Não foi possível carregar', 'Could not load', 'No se pudo cargar'], refresh: ['Atualize a página.', 'Please refresh the page.', 'Actualiza la página.'],
+  favSaved: ['Salvo nos favoritos', 'Saved to favourites', 'Guardado en favoritos'], favRemoved: ['Removido dos favoritos', 'Removed from favourites', 'Eliminado de favoritos'],
+  fav: ['Favoritar', 'Save', 'Guardar'], prev: ['Anterior', 'Previous', 'Anterior'], next: ['Próxima', 'Next', 'Siguiente'],
+  share: ['Compartilhar', 'Share', 'Compartir'], save: ['Salvar', 'Save', 'Guardar'], linkCopied: ['Link copiado', 'Link copied', 'Enlace copiado'],
+  showAll: ['Mostrar todas as fotos', 'Show all photos', 'Mostrar todas las fotos'], photo: ['Foto', 'Photo', 'Foto'], close: ['Fechar', 'Close', 'Cerrar'],
+  hlRoom: ['Seu quarto com áreas comuns compartilhadas.', 'Your own room with shared common areas.', 'Tu propia habitación con zonas comunes compartidas.'],
+  hlWhole: ['O espaço inteiro só para você.', 'The whole place just for you.', 'Todo el espacio solo para ti.'],
+  minContract: ['Contrato mínimo de {m}.', 'Minimum contract of {m}.', 'Contrato mínimo de {m}.'], flexContract: ['Contrato flexível.', 'Flexible contract.', 'Contrato flexible.'],
+  billsIncT: ['Contas incluídas', 'Bills included', 'Gastos incluidos'], billsIncD: ['Luz, gás e internet já estão no valor do aluguel.', 'Electricity, gas and internet are included in the rent.', 'Luz, gas e internet ya están incluidos en el alquiler.'],
+  billsSepT: ['Contas à parte', 'Bills not included', 'Gastos aparte'], billsSepD: ['As contas são divididas entre os moradores.', 'Bills are split between housemates.', 'Los gastos se reparten entre los compañeros de casa.'],
+  about: ['Sobre este espaço', 'About this place', 'Sobre este espacio'], offers: ['O que este lugar oferece', 'What this place offers', 'Qué ofrece este lugar'],
+  rules: ['Regras da casa', 'House rules', 'Normas de la casa'], whereLive: ['Onde você vai morar', "Where you'll live", 'Dónde vivirás'],
+  exactLoc: ['A localização exata é enviada após a confirmação da visita.', 'The exact address is shared once your viewing is confirmed.', 'La dirección exacta se envía cuando se confirma la visita.'],
+  book: ['Agendar visita', 'Book a viewing', 'Reservar una visita'], seeAvail: ['Ver disponíveis', 'See available', 'Ver disponibles'],
+  rentedTitle: ['Este quarto já foi alugado', 'This room has been rented', 'Esta habitación ya está alquilada'],
+  rentedSub: ['Temos outros quartos disponíveis esperando por você.', 'We have other rooms available for you.', 'Tenemos otras habitaciones disponibles para ti.'],
+  seeAvailRooms: ['Ver quartos disponíveis', 'See available rooms', 'Ver habitaciones disponibles'],
+  noSlots: ['No momento não há horários livres para visita.<br>Fale com a gente pelo WhatsApp para combinar outro dia.', 'There are no viewing slots available right now.<br>Message us on WhatsApp to arrange another day.', 'Ahora mismo no hay horarios libres para visitas.<br>Escríbenos por WhatsApp para acordar otro día.'],
+  date: ['Data da visita', 'Viewing date', 'Fecha de la visita'], peopleL: ['Pessoas', 'People', 'Personas'], time: ['Horário', 'Time', 'Hora'],
+  name: ['Nome completo', 'Full name', 'Nombre completo'], email: ['E-mail', 'Email', 'Correo electrónico'], phone: ['Telefone / WhatsApp', 'Phone / WhatsApp', 'Teléfono / WhatsApp'],
+  msg: ['Mensagem (opcional)', 'Message (optional)', 'Mensaje (opcional)'], msgPh: ['Conte um pouco sobre você', 'Tell us a bit about yourself', 'Cuéntanos un poco sobre ti'],
+  free: ['Visita gratuita e sem compromisso', 'Free viewing, no commitment', 'Visita gratuita y sin compromiso'],
+  fillReq: ['Preencha nome, e-mail e telefone.', 'Please fill in your name, email and phone.', 'Rellena tu nombre, correo y teléfono.'],
+  checkEmail: ['Confira o e-mail.', 'Please check the email address.', 'Revisa el correo electrónico.'], sending: ['Enviando…', 'Sending…', 'Enviando…'],
+  sentTitle: ['Pedido enviado!', 'Request sent!', '¡Solicitud enviada!'],
+  sentBody: ['Recebemos seu pedido de visita para {when} às {time}. Vamos confirmar pelo WhatsApp ou e-mail.', "We've received your viewing request for {when} at {time}. We'll confirm by WhatsApp or email.", 'Hemos recibido tu solicitud de visita para el {when} a las {time}. Te confirmaremos por WhatsApp o correo.'],
+  slotTaken: ['Esse horário não está mais disponível. Escolha outro, por favor.', 'That time is no longer available. Please choose another one.', 'Ese horario ya no está disponible. Elige otro, por favor.'],
+  genericErr: ['Não foi possível enviar. Tente de novo.', 'Could not send. Please try again.', 'No se pudo enviar. Inténtalo de nuevo.'],
+  notFound: ['Anúncio não encontrado', 'Listing not found', 'Anuncio no encontrado'], removed: ['Ele pode ter sido removido.', 'It may have been removed.', 'Puede que se haya eliminado.'],
+  language: ['Idioma', 'Language', 'Idioma'],
 };
+const LI = { pt: 0, en: 1, es: 2 }[LANG];
+const t = (k, v = {}) => String((DICT[k] || [k])[LI] ?? DICT[k][0]).replace(/\{(\w+)\}/g, (_, x) => v[x] ?? '');
+const WORDS = {
+  person: [['pessoa', 'pessoas'], ['person', 'people'], ['persona', 'personas']],
+  bedroom: [['quarto', 'quartos'], ['bedroom', 'bedrooms'], ['habitación', 'habitaciones']],
+  bathroom: [['banheiro', 'banheiros'], ['bathroom', 'bathrooms'], ['baño', 'baños']],
+  privBath: [['banheiro privativo', 'banheiros privativos'], ['private bathroom', 'private bathrooms'], ['baño privado', 'baños privados']],
+  month: [['mês', 'meses'], ['month', 'months'], ['mes', 'meses']],
+};
+const pl = (n, w) => `${n} ${WORDS[w][LI][n == 1 ? 0 : 1]}`;
+const TYPE_T = { 'Quarto privativo': ['Quarto privativo', 'Private room', 'Habitación privada'], 'Quarto compartilhado': ['Quarto compartilhado', 'Shared room', 'Habitación compartida'], 'Estúdio': ['Estúdio', 'Studio', 'Estudio'], 'Apartamento': ['Apartamento', 'Apartment', 'Apartamento'], 'Casa': ['Casa', 'House', 'Casa'], 'Todos': ['Todos', 'All', 'Todos'] };
+const AMEN_T = { 'Wi-Fi': ['Wi-Fi', 'Wi-Fi', 'Wi-Fi'], 'Cozinha': ['Cozinha', 'Kitchen', 'Cocina'], 'Máquina de lavar': ['Máquina de lavar', 'Washing machine', 'Lavadora'], 'Secadora': ['Secadora', 'Dryer', 'Secadora'], 'Aquecimento': ['Aquecimento', 'Heating', 'Calefacción'], 'Escrivaninha': ['Escrivaninha', 'Desk', 'Escritorio'], 'Guarda-roupa': ['Guarda-roupa', 'Wardrobe', 'Armario'], 'Banheiro privativo': ['Banheiro privativo', 'Private bathroom', 'Baño privado'], 'Estacionamento': ['Estacionamento', 'Parking', 'Aparcamiento'], 'Jardim': ['Jardim', 'Garden', 'Jardín'], 'Ônibus perto': ['Ônibus perto', 'Bus nearby', 'Autobús cerca'], 'Contas incluídas': ['Contas incluídas', 'Bills included', 'Gastos incluidos'], 'Mobiliado': ['Mobiliado', 'Furnished', 'Amueblado'], 'Limpeza das áreas comuns': ['Limpeza das áreas comuns', 'Common areas cleaned', 'Limpieza de zonas comunes'], 'Smart TV': ['Smart TV', 'Smart TV', 'Smart TV'], 'Micro-ondas': ['Micro-ondas', 'Microwave', 'Microondas'] };
+const tType = (k) => (TYPE_T[k] || [k])[LI] || k;
+const tAmen = (k) => (AMEN_T[k] || [k])[LI] || k;
+// Texto do anúncio no idioma escolhido (cai para o português se não houver tradução)
+const lt = (l, f) => (l.i18n && l.i18n[LANG] && String(l.i18n[LANG][f] || '').trim()) || l[f] || '';
+const withLang = (url) => url + (url.includes('?') ? '&' : '?') + 'lang=' + LANG;
+
+const eur = (n) => '€' + Number(n || 0).toLocaleString(LOCALE[LANG]);
+const dShort = (iso, o = { day: 'numeric', month: 'short' }) => new Date(iso + 'T12:00:00').toLocaleDateString(LOCALE[LANG], o).replace(/ de /g, ' ').replace(/\./g, '');
+const fmtDate = (iso) => (iso ? dShort(iso, { day: 'numeric', month: 'short', year: 'numeric' }) : '');
 const availText = (iso) => {
-  if (!iso) return 'Disponível agora';
-  const d = new Date(iso + 'T12:00:00');
-  return d <= new Date() ? 'Disponível agora' : 'Disponível a partir de ' + d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }).replace(' de ', ' ').replace('.', '');
+  if (!iso) return t('availNow');
+  return new Date(iso + 'T12:00:00') <= new Date() ? t('availNow') : t('availFrom', { d: dShort(iso) });
 };
 const plural = (n, a, b) => `${n} ${n == 1 ? a : b}`;
 
@@ -77,10 +150,10 @@ async function api(url, opts = {}) {
 }
 
 function toast(msg) {
-  let t = document.querySelector('.toast');
-  if (!t) { t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); }
-  t.textContent = msg; t.classList.add('show');
-  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2600);
+  let el = document.querySelector('.toast');
+  if (!el) { el = document.createElement('div'); el.className = 'toast'; document.body.appendChild(el); }
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._h); el._h = setTimeout(() => el.classList.remove('show'), 2600);
 }
 
 // Favoritos no navegador
@@ -95,25 +168,33 @@ const favs = {
   },
 };
 
+function setLang(l) {
+  try { localStorage.setItem('dnl-lang', l); } catch {}
+  const u = new URL(location.href); u.searchParams.set('lang', l); location.href = u.toString();
+}
+const langSwitch = () => `<div class="lang" role="group" aria-label="${t('language')}">${Object.entries(LANGS).map(([k, v]) =>
+  `<button type="button" class="${k === LANG ? 'on' : ''}" onclick="setLang('${k}')" aria-pressed="${k === LANG}">${v}</button>`).join('')}</div>`;
+
 function headerHTML({ search = false } = {}) {
   return `
   <header class="header"><div class="wrap">
-    <a class="logo" href="/" aria-label="DNL Management">${LOGO}<span>DNL Management</span></a>
+    <a class="logo" href="${withLang('/')}" aria-label="DNL Management">${LOGO}<span>DNL Management</span></a>
     ${search ? `
     <form class="search" id="search" onsubmit="return false">
-      <div class="seg" style="flex:1.4"><label for="q">Onde</label><input id="q" placeholder="Buscar bairro ou endereço" autocomplete="off"></div>
-      <div class="seg" style="flex:1"><label for="qmax">Preço máximo</label><select id="qmax"><option value="">Qualquer valor</option><option>600</option><option>800</option><option>1000</option><option>1500</option><option>2000</option></select></div>
-      <div class="seg" style="flex:1"><label for="qwhen">Mudança</label><select id="qwhen"><option value="">Qualquer data</option><option value="0">Agora</option><option value="30">Próximos 30 dias</option><option value="90">Próximos 3 meses</option></select></div>
-      <button class="go" aria-label="Buscar">${I.search.replace('<svg', '<svg width="16" height="16"')}</button>
+      <div class="seg" style="flex:1.4"><label for="q">${t('where')}</label><input id="q" placeholder="${t('searchPh')}" autocomplete="off"></div>
+      <div class="seg" style="flex:1"><label for="qmax">${t('maxPrice')}</label><select id="qmax"><option value="">${t('anyPrice')}</option><option value="600">€600</option><option value="800">€800</option><option value="1000">€1.000</option><option value="1500">€1.500</option><option value="2000">€2.000</option></select></div>
+      <div class="seg" style="flex:1"><label for="qwhen">${t('moveIn')}</label><select id="qwhen"><option value="">${t('anyDate')}</option><option value="0">${t('now')}</option><option value="30">${t('next30')}</option><option value="90">${t('next90')}</option></select></div>
+      <button class="go" aria-label="${t('search')}">${I.search.replace('<svg', '<svg width="16" height="16"')}</button>
     </form>` : ''}
     <div class="header-right">
-      <a class="pill-link" href="/#anuncios">Ver espaços</a>
+      <a class="pill-link" href="${withLang('/')}#anuncios">${t('seeSpaces')}</a>
+      ${langSwitch()}
     </div>
   </div></header>`;
 }
 function footerHTML() {
   return `<footer class="footer"><div class="wrap">
-    <div>© ${new Date().getFullYear()} DNL Management · Cork, Irlanda</div>
-    <div><a href="/">Ver todos os espaços</a></div>
+    <div>© ${new Date().getFullYear()} DNL Management · Cork, ${t('ireland')}</div>
+    <div style="display:flex;gap:16px;align-items:center"><a href="${withLang('/')}">${t('seeAll')}</a>${langSwitch()}</div>
   </div></footer>`;
 }
