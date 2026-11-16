@@ -110,6 +110,10 @@ input, select, textarea { font: inherit; color: inherit; }
 .btn-sm { padding: 8px 14px; font-size: 14px; }
 .btn-block { width: 100%; }
 .btn[disabled] { opacity: .5; cursor: not-allowed; }
+.btn-wa { background: #25D366; color: #fff; margin-top: 12px; }
+.btn-wa:hover { background: #1EBE5A; }
+.btn-icon { padding: 12px; margin-top: 0; }
+.mbar-btns { display: flex; gap: 8px; align-items: center; }
 
 .field { border: 1px solid #B0B0B0; border-radius: 8px; padding: 10px 12px 8px; position: relative; background: #fff; display: block; }
 .field:focus-within { outline: 2px solid var(--ink); outline-offset: -1px; border-color: transparent; }
