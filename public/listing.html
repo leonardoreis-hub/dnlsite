@@ -136,7 +136,12 @@ function render() {
     [I.calendar, availText(L.available_from), L.min_months ? t('minContract', { m: pl(L.min_months, 'month') }) : t('flexContract')],
     L.bills_included ? [I.bolt, t('billsIncT'), t('billsIncD')] : [I.bolt, t('billsSepT'), t('billsSepD')],
   ];
-  const facts = [pl(L.guests || 1, 'person'), pl(L.bedrooms || 1, 'bedroom'), pl(L.bathrooms || 1, hasBath ? 'privBath' : 'bathroom')].join(' · ');
+  // Quarto (single ou casal): só pessoas e tipo de banheiro (privativo só na suíte)
+  const isRoom = String(L.type || '').startsWith('Quarto');
+  const facts = (isRoom
+    ? [pl(L.guests || 1, 'person'), hasBath ? pl(1, 'privBath') : t('sharedBath')]
+    : [pl(L.guests || 1, 'person'), pl(L.bedrooms || 1, 'bedroom'), pl(L.bathrooms || 1, hasBath ? 'privBath' : 'bathroom')]).join(' · ');
+  const WA = waLink(TITLE);
 
   $('#page').innerHTML = `
   <div class="lwrap">
@@ -165,7 +170,8 @@ function render() {
       <div class="bookbox-wrap desktop">
         <div class="bookbox">
           ${L.rented ? rentedHTML() : `<div class="pr"><b>${eur(L.price)}</b><span>${t('month')}</span><small>${L.bills_included ? t('billsInc') : t('plusBills')}</small></div>
-          <div id="schedDesk"></div>`}
+          <div id="schedDesk"></div>
+          <a class="btn btn-wa btn-block" href="${WA}" target="_blank" rel="noopener">${I.wa}${t('waChat')}</a>`}
         </div>
       </div>
     </div>
@@ -178,7 +184,8 @@ function render() {
   </div>
   <div class="mbar">${L.rented ? `<div><b>${t('rented')}</b><small>${t('rentedTitle')}</small></div>
     <a class="btn btn-brand" href="${withLang('/')}">${t('seeAvail')}</a>` : `<div><b>${eur(L.price)}</b> ${t('month')}<small>${availText(L.available_from)}</small></div>
-    <button class="btn btn-brand" id="openSched">${t('book')}</button>`}</div>`;
+    <span class="mbar-btns"><a class="btn btn-wa btn-icon" href="${WA}" target="_blank" rel="noopener" aria-label="${t('waChat')}">${I.wa}</a>
+    <button class="btn btn-brand" id="openSched">${t('book')}</button></span>`}</div>`;
 
   if (!L.rented) $('#schedDesk').innerHTML = scheduleForm('d');
   $('#schedMobile').innerHTML = scheduleForm('m');
