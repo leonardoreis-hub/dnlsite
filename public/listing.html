@@ -98,7 +98,7 @@ function bindForms() {
       if (!/^\S+@\S+\.\S+$/.test(data.email)) { err.hidden = false; err.textContent = t('checkEmail'); return; }
       err.hidden = true; btn.disabled = true; btn.textContent = t('sending');
       try {
-        await api('/api/visits', { method: 'POST', body: { ...data, listing_id: L.id, lang: LANG } });
+        await api('/api/visits', { method: 'POST', body: { ...data, listing_id: L.id, lang: LANG, ref: REF } });
         const when = dShort(data.date, { weekday: 'long', day: 'numeric', month: 'long' });
         f.outerHTML = `<div class="done"><div class="ok">${I.check}</div><h4>${t('sentTitle')}</h4>
           <p>${t('sentBody', { when: `<b style="color:#222">${when}`, time: `${esc(data.time)}</b>` })}</p></div>`;

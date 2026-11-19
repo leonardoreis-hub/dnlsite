@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Painel do parceiro · DNL Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="icon" type="image/svg+xml" href="/img/dnl-icon.svg">
+<style>
+  .pw { max-width: 880px; margin: 0 auto; padding: 24px 16px 60px; }
+  .ph { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; text-decoration: none; color: inherit; }
+  .ph img { width: 36px; height: 36px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 20px 0 28px; }
+  .kpi { border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .kpi b { display: block; font-size: 26px; margin-top: 4px; }
+  .kpi small { color: var(--muted); font-size: 13px; }
+  .kpi.hl { background: var(--bg-soft); }
+  .linkbox { border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 10px; }
+  .linkbox .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .linkbox input { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .tw { overflow-x: auto; }
+  h2 { font-size: 18px; margin: 32px 0 10px; }
+  .muted { color: var(--muted); }
+  .rooms { display: grid; gap: 8px; }
+  .rooms .r { display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="pw" id="app"><p class="muted">Carregando…</p></div>
+<script src="/js/common.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const token = location.pathname.split('/').pop();
+const br = (d) => d ? String(d).slice(0, 10).split('-').reverse().join('/') : '';
+const ST = { novo: 'Pedido recebido', confirmado: 'Visita confirmada', realizado: 'Visita feita', cancelado: 'Cancelada' };
+function copy(t) { navigator.clipboard.writeText(t).then(() => toast('Link copiado'), () => prompt('Copie o link:', t)); }
+
+(async () => {
+  let d, rooms = [];
+  try { [d, rooms] = await Promise.all([api('/api/aff/' + token), api('/api/listings').catch(() => [])]); }
+  catch (e) { $('#app').innerHTML = `<a class="ph" href="/">${LOGO}<span>DNL Management</span></a><div class="empty" style="margin-top:40px"><h2>Link inválido</h2><p>Fale com a DNL para receber o seu link de parceiro.</p></div>`; return; }
+  const base = location.origin, link = `${base}/?ref=${d.code}`, s = d.stats;
+  const avail = rooms.filter((r) => !r.rented);
+  $('#app').innerHTML = `
+  <a class="ph" href="/">${LOGO}<span>DNL Management · Parceiros</span></a>
+  <h1 style="margin:24px 0 4px">Olá, ${esc(d.name.split(' ')[0])}!</h1>
+  <p class="muted">Você ganha <b>€${d.commission}</b> por cada quarto fechado por alguém que chegou pelo seu link.${d.active ? '' : ' <b>Seu link está pausado no momento.</b>'}</p>
+
+  <div class="kpis">
+    <div class="kpi"><small>Cliques no link</small><b>${s.clicks}</b></div>
+    <div class="kpi"><small>Contatos no WhatsApp</small><b>${s.whatsapp}</b></div>
+    <div class="kpi"><small>Visitas agendadas</small><b>${s.visits}</b></div>
+    <div class="kpi"><small>Quartos fechados</small><b>${s.closed}</b></div>
+    <div class="kpi hl"><small>A receber</small><b>€${s.earned - s.paid}</b></div>
+    <div class="kpi"><small>Já recebido</small><b>€${s.paid}</b></div>
+  </div>
+
+  <div class="linkbox">
+    <b>Seu link de divulgação</b>
+    <div class="row"><input readonly value="${esc(link)}"><button class="btn btn-brand btn-sm" data-cp="${esc(link)}">Copiar</button></div>
+    <small class="muted">Quem entrar pelo seu link fica marcado como sua indicação por 60 dias, inclusive se chamar a gente pelo WhatsApp do site.</small>
+  </div>
+
+  ${avail.length ? `<h2>Quartos disponíveis agora</h2><p class="muted" style="margin-top:-4px">Copie o link de um quarto específico para divulgar.</p>
+  <div class="rooms">${avail.map((r) => { const u = `${base}/anuncio/${r.id}?ref=${d.code}`; return `<div class="r"><span><b>${esc(r.title)}</b> · €${r.price}/mês</span><button class="btn btn-outline btn-sm" data-cp="${esc(u)}">Copiar link</button></div>`; }).join('')}</div>` : ''}
+
+  <h2>Quartos fechados</h2>
+  ${d.sales.length ? `<div class="tw"><table><tr><th>Data</th><th>Inquilino</th><th>Quarto</th><th>Comissão</th><th>Situação</th></tr>
+    ${d.sales.map((x) => `<tr><td>${br(x.created_at)}</td><td>${esc(x.tenant_name || '—')}</td><td>${esc(x.listing_title || '')}</td><td>€${x.amount}</td><td>${x.paid ? `Pago em ${br(x.paid_at)}` : 'A receber'}</td></tr>`).join('')}</table></div>`
+    : '<p class="muted">Nenhum quarto fechado ainda.</p>'}
+
+  <h2>Visitas agendadas pelas suas indicações</h2>
+  ${d.visits.length ? `<div class="tw"><table><tr><th>Pedido em</th><th>Nome</th><th>Quarto</th><th>Data da visita</th><th>Situação</th></tr>
+    ${d.visits.map((v) => `<tr><td>${br(v.created_at)}</td><td>${esc(v.name)}</td><td>${esc(v.listing_title || '')}</td><td>${br(v.date)}</td><td>${ST[v.status] || esc(v.status)}</td></tr>`).join('')}</table></div>`
+    : '<p class="muted">Nenhuma visita agendada ainda.</p>'}
+  <p class="muted" style="margin-top:32px;font-size:13px">Este painel é pessoal. Não compartilhe este endereço.</p>`;
+  document.querySelectorAll('[data-cp]').forEach((b) => b.onclick = () => copy(b.dataset.cp));
+})();
+</script>
+</body>
+</html>

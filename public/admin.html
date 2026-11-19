@@ -101,7 +101,7 @@
 <script>
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app');
-let listings = [], visits = [], tab = 'listings', editing = null, status = {};
+let listings = [], visits = [], tab = 'listings', editing = null, status = {}, AFF = { commission: 50, affiliates: [] };
 
 // ---------- Login ----------
 function loginView() {
@@ -133,6 +133,7 @@ function shell() {
       <button class="tab${tab === 'listings' ? ' on' : ''}" data-t="listings">Anúncios</button>
       <button class="tab${tab === 'visits' ? ' on' : ''}" data-t="visits">Visitas${nNew ? `<span class="n">${nNew}</span>` : ''}</button>
       <button class="tab${tab === 'agenda' ? ' on' : ''}" data-t="agenda">Agenda</button>
+      <button class="tab${tab === 'aff' ? ' on' : ''}" data-t="aff">Afiliados</button>
     </div>
     <button class="btn btn-ghost" id="logout">Sair</button>
   </div></header>
@@ -140,7 +141,7 @@ function shell() {
   <div class="modal ed" id="ed"><div class="sheet" id="edSheet"></div></div>`;
   document.querySelectorAll('.tab').forEach((b) => b.onclick = () => { tab = b.dataset.t; shell(); });
   $('#logout').onclick = async () => { await api('/api/logout', { method: 'POST' }); loginView(); };
-  tab === 'listings' ? listingsView() : tab === 'visits' ? visitsView() : agendaView();
+  tab === 'listings' ? listingsView() : tab === 'visits' ? visitsView() : tab === 'aff' ? affView() : agendaView();
 }
 
 // ---------- Agenda de visitas ----------
@@ -281,7 +282,7 @@ function visitsView() {
           <button class="btn btn-ghost btn-sm" data-vdel="${v.id}" style="color:#C13515">Excluir</button>
         </span>
       </div>
-      <div><b>${esc(v.name)}</b> · ${plural(v.people, 'pessoa', 'pessoas')} · <span style="color:var(--muted)">${esc(v.listing_title)}</span>${v.lang && v.lang !== 'pt' ? ` <span class="chip off">${v.lang === 'en' ? 'Fala inglês' : 'Fala espanhol'}</span>` : ''}</div>
+      <div><b>${esc(v.name)}</b> · ${plural(v.people, 'pessoa', 'pessoas')} · <span style="color:var(--muted)">${esc(v.listing_title)}</span>${v.lang && v.lang !== 'pt' ? ` <span class="chip off">${v.lang === 'en' ? 'Fala inglês' : 'Fala espanhol'}</span>` : ''}${v.ref_code ? ` <span class="chip new">Indicado por ${esc((AFF.affiliates.find((a) => a.code === v.ref_code) || {}).name || v.ref_code)}</span>` : ''}${v.ref_code ? (v.sale_id ? ' <span class="chip rent">Fechou ✓</span>' : ` <button class="btn btn-outline btn-sm" data-close="${v.id}">Fechou contrato</button>`) : ''}</div>
       <div class="meta"><a href="mailto:${esc(v.email)}">${esc(v.email)}</a> · <a href="https://wa.me/${esc(v.phone.replace(/\D/g, ''))}" target="_blank">${esc(v.phone)}</a>
         · <small style="color:var(--muted)">recebido ${new Date(v.created_at.replace(' ', 'T') + 'Z').toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}${v.email_sent ? ' · e-mail enviado' : ''}</small></div>
       ${v.message ? `<div class="msg">${esc(v.message)}</div>` : ''}
@@ -289,6 +290,12 @@ function visitsView() {
   document.querySelectorAll('[data-st]').forEach((s) => s.onchange = async () => {
     await api('/api/admin/visits/' + s.dataset.st, { method: 'PUT', body: { status: s.value } });
     visits.find((v) => v.id == s.dataset.st).status = s.value; shell();
+  });
+  document.querySelectorAll('[data-close]').forEach((b) => b.onclick = async () => {
+    const v = visits.find((x) => x.id == b.dataset.close), a = AFF.affiliates.find((x) => x.code === v.ref_code);
+    if (!a) return toast('Afiliado não encontrado');
+    if (!confirm(`Confirmar que ${v.name} fechou contrato?\nComissão de €${AFF.commission} para ${a.name}.`)) return;
+    try { await api(`/api/admin/affiliates/${a.id}/sales`, { method: 'POST', body: { visit_id: v.id } }); await load(); shell(); toast('Comissão lançada'); } catch (e) { toast(e.message); }
   });
   document.querySelectorAll('[data-vdel]').forEach((b) => b.onclick = async () => {
     if (!confirm('Excluir este pedido?')) return;
@@ -472,8 +479,64 @@ async function save() {
   } catch (e) { toast(e.message); btn.disabled = false; btn.textContent = 'Salvar'; }
 }
 
+// ---------- Afiliados ----------
+function copyTxt(t) { navigator.clipboard.writeText(t).then(() => toast('Link copiado'), () => prompt('Copie o link:', t)); }
+function affView() {
+  const site = location.origin, list = AFF.affiliates;
+  const tot = list.reduce((o, a) => ({ due: o.due + a.earned - a.paid, closed: o.closed + a.closed }), { due: 0, closed: 0 });
+  $('#main').innerHTML = `
+  <div class="adm-top"><h1>Afiliados</h1><button class="btn btn-dark" id="affNew">+ Novo afiliado</button></div>
+  <p style="color:var(--muted);margin:-8px 0 20px">Comissão: <b>€${AFF.commission}</b> por quarto fechado · ${tot.closed} fechado(s) no total · <b>€${tot.due}</b> a pagar</p>
+  <div id="affForm" class="vis" style="margin-bottom:20px;display:none">
+    <div class="fgroup" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+      <label class="field"><span>Nome*</span><input id="afName"></label>
+      <label class="field"><span>Código do link (opcional)</span><input id="afCode" placeholder="ex.: joao"></label>
+      <label class="field"><span>WhatsApp</span><input id="afPhone"></label>
+      <label class="field"><span>E-mail</span><input id="afEmail"></label>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px"><button class="btn btn-brand btn-sm" id="afSave">Salvar afiliado</button><button class="btn btn-ghost btn-sm" id="afCancel">Cancelar</button></div>
+  </div>
+  ${list.length ? list.map((a) => `
+  <div class="vis">
+    <div class="top">
+      <span class="when">${esc(a.name)} ${a.active ? '' : '<span class="chip off">Pausado</span>'}</span>
+      <span style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" data-cp="${site}/?ref=${a.code}">Copiar link de divulgação</button>
+        <button class="btn btn-outline btn-sm" data-cp="${site}/parceiro/${a.token}">Copiar painel do afiliado</button>
+        <button class="btn btn-ghost btn-sm" data-sale="${a.id}">+ Quarto fechado</button>
+        <button class="btn btn-ghost btn-sm" data-act="${a.id}">${a.active ? 'Pausar' : 'Reativar'}</button>
+        <button class="btn btn-ghost btn-sm" data-adel="${a.id}" style="color:#C13515">Excluir</button>
+      </span>
+    </div>
+    <div class="meta">Código <b>${esc(a.code)}</b>${a.phone ? ` · <a href="https://wa.me/${esc(a.phone.replace(/\D/g, ''))}" target="_blank">${esc(a.phone)}</a>` : ''}${a.email ? ` · ${esc(a.email)}` : ''}</div>
+    <div class="meta" style="margin-top:6px">👆 ${a.clicks} clique(s) · 💬 ${a.whatsapp} WhatsApp · 📅 ${a.visits} visita(s) · ✅ ${a.closed} fechado(s) · <b>€${a.earned}</b> ganho · €${a.paid} pago · <b>€${a.earned - a.paid} a pagar</b></div>
+    ${a.sales.length ? `<div class="msg">${a.sales.map((x) => `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0">
+      <span>${esc(x.created_at.slice(0, 10).split('-').reverse().join('/'))} · ${esc(x.tenant_name || '—')} · ${esc(x.listing_title || '')} · €${x.amount}</span>
+      <span style="display:flex;gap:6px;align-items:center;white-space:nowrap">${x.paid ? `<span class="chip rent">Pago ${esc((x.paid_at || '').split('-').reverse().join('/'))}</span> <button class="btn btn-ghost btn-sm" data-unpay="${x.id}">desfazer</button>` : `<button class="btn btn-outline btn-sm" data-pay="${x.id}">Marcar como pago</button>`}
+      <button class="btn btn-ghost btn-sm" data-sdel="${x.id}" style="color:#C13515">×</button></span></div>`).join('')}</div>` : ''}
+  </div>`).join('') : '<div class="rows"><div class="empty"><h2>Nenhum afiliado ainda</h2><p>Cadastre um afiliado para gerar o link de divulgação dele.</p></div></div>'}`;
+  $('#affNew').onclick = () => { $('#affForm').style.display = 'block'; $('#afName').focus(); };
+  $('#afCancel').onclick = () => { $('#affForm').style.display = 'none'; };
+  $('#afSave').onclick = async () => {
+    try { await api('/api/admin/affiliates', { method: 'POST', body: { name: $('#afName').value, code: $('#afCode').value, phone: $('#afPhone').value, email: $('#afEmail').value } });
+      await load(); shell(); toast('Afiliado cadastrado'); } catch (e) { toast(e.message); }
+  };
+  const act = (sel, fn) => document.querySelectorAll(sel).forEach((b) => b.onclick = async () => { try { if (await fn(b) !== false) { await load(); shell(); } } catch (e) { toast(e.message); } });
+  document.querySelectorAll('[data-cp]').forEach((b) => b.onclick = () => copyTxt(b.dataset.cp));
+  act('[data-act]', (b) => api('/api/admin/affiliates/' + b.dataset.act, { method: 'PUT', body: { active: !AFF.affiliates.find((a) => a.id == b.dataset.act).active } }));
+  act('[data-adel]', (b) => confirm('Excluir este afiliado e todo o histórico dele?') ? api('/api/admin/affiliates/' + b.dataset.adel, { method: 'DELETE' }) : false);
+  act('[data-pay]', (b) => api('/api/admin/sales/' + b.dataset.pay, { method: 'PUT', body: { paid: true } }));
+  act('[data-unpay]', (b) => api('/api/admin/sales/' + b.dataset.unpay, { method: 'PUT', body: { paid: false } }));
+  act('[data-sdel]', (b) => confirm('Remover este quarto fechado?') ? api('/api/admin/sales/' + b.dataset.sdel, { method: 'DELETE' }) : false);
+  act('[data-sale]', (b) => {
+    const tenant = prompt('Nome do inquilino que fechou:'); if (tenant === null) return false;
+    const room = prompt('Quarto / anúncio:'); if (room === null) return false;
+    return api(`/api/admin/affiliates/${b.dataset.sale}/sales`, { method: 'POST', body: { tenant_name: tenant, listing_title: room } });
+  });
+}
+
 async function load() {
-  [listings, visits, status] = await Promise.all([api('/api/admin/listings'), api('/api/admin/visits'), api('/api/admin/status')]);
+  [listings, visits, status, AFF] = await Promise.all([api('/api/admin/listings'), api('/api/admin/visits'), api('/api/admin/status'), api('/api/admin/affiliates').catch(() => ({ commission: 50, affiliates: [] }))]);
 }
 async function boot() {
   try { await load(); shell(); } catch (e) { if (e.status === 401) loginView(); else app.innerHTML = '<div class="empty"><h2>Erro ao carregar</h2></div>'; }
