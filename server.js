@@ -66,6 +66,40 @@ try { db.exec('ALTER TABLE listings ADD COLUMN i18n TEXT'); } catch {} // tradu�
 try { db.exec('ALTER TABLE visits ADD COLUMN lang TEXT'); } catch {}
 try { db.exec('ALTER TABLE listings ADD COLUMN geo_checked TEXT'); } catch {} // auto-house | auto-street | manual | failed
 
+// --- Afiliados ---
+db.exec(`
+CREATE TABLE IF NOT EXISTS affiliates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  code TEXT NOT NULL UNIQUE,
+  email TEXT, phone TEXT,
+  token TEXT NOT NULL UNIQUE,
+  active INTEGER NOT NULL DEFAULT 1,
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS ref_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  affiliate_id INTEGER NOT NULL,
+  kind TEXT NOT NULL,            -- click | wa
+  listing_id INTEGER,
+  visitor TEXT,                  -- hash anônimo (ip + navegador), só para não contar o mesmo clique várias vezes
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS aff_sales (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  affiliate_id INTEGER NOT NULL,
+  visit_id INTEGER,
+  listing_title TEXT,
+  tenant_name TEXT,
+  amount INTEGER NOT NULL DEFAULT 50,
+  paid INTEGER NOT NULL DEFAULT 0,
+  paid_at TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);`);
+try { db.exec('ALTER TABLE visits ADD COLUMN ref_code TEXT'); } catch {}
+const AFF_COMMISSION = parseInt(process.env.AFF_COMMISSION || '50') || 50; // € por quarto fechado
+
 // Traduções iniciais dos anúncios já publicados (aplica só onde ainda não há tradução
 // e só nos campos cujo texto em português continua igual ao original)
 try {
@@ -126,6 +160,7 @@ async function notifyVisit(v, listing) {
       <tr><td style="padding:8px 0;color:#717171">Pessoas</td><td>${esc(v.people)}</td></tr>
       ${v.lang && v.lang !== 'pt' ? `<tr><td style="padding:8px 0;color:#717171">Idioma</td><td>${v.lang === 'en' ? 'Inglês — responda em inglês' : 'Espanhol — responda em espanhol'}</td></tr>` : ''}
       ${v.message ? `<tr><td style="padding:8px 0;color:#717171;vertical-align:top">Mensagem</td><td>${esc(v.message)}</td></tr>` : ''}
+      ${v.ref_code ? `<tr><td style="padding:8px 0;color:#717171">Indicado por</td><td><b>${esc(affByCode(v.ref_code)?.name || v.ref_code)}</b> (afiliado)</td></tr>` : ''}
     </table>
     ${listing?.address ? `<p style="margin-top:20px;color:#717171">Endereço: ${esc(listing.address)}</p>` : ''}
   </div>`;
@@ -303,9 +338,10 @@ app.post('/api/visits', async (req, res) => {
     date: String(b.date).slice(0, 10), time: String(b.time).slice(0, 5),
     people: Math.max(1, Math.min(10, parseInt(b.people) || 1)), message: String(b.message || '').slice(0, 2000),
     lang: ['pt', 'en', 'es'].includes(b.lang) ? b.lang : 'pt',
+    ref_code: affByCode(b.ref)?.code || null,
   };
-  const info = db.prepare(`INSERT INTO visits (listing_id, listing_title, name, email, phone, date, time, people, message, lang)
-    VALUES (@listing_id, @listing_title, @name, @email, @phone, @date, @time, @people, @message, @lang)`).run(v);
+  const info = db.prepare(`INSERT INTO visits (listing_id, listing_title, name, email, phone, date, time, people, message, lang, ref_code)
+    VALUES (@listing_id, @listing_title, @name, @email, @phone, @date, @time, @people, @message, @lang, @ref_code)`).run(v);
   hits.push(now); visitHits.set(ip, hits);
   let sent = false;
   try { sent = await notifyVisit(v, listing); } catch (e) { console.error('Falha ao enviar e-mail:', e.message); }
@@ -390,7 +426,7 @@ app.post('/api/admin/upload', requireAdmin, upload.array('photos', 30), async (r
 
 // --- Admin: visitas ---
 app.get('/api/admin/visits', requireAdmin, (req, res) => {
-  res.json(db.prepare('SELECT * FROM visits ORDER BY created_at DESC').all());
+  res.json(db.prepare('SELECT v.*, s.id AS sale_id FROM visits v LEFT JOIN aff_sales s ON s.visit_id = v.id ORDER BY v.created_at DESC').all());
 });
 app.put('/api/admin/visits/:id', requireAdmin, (req, res) => {
   db.prepare('UPDATE visits SET status = ? WHERE id = ?').run(String(req.body.status || 'novo'), req.params.id);
@@ -400,6 +436,104 @@ app.delete('/api/admin/visits/:id', requireAdmin, (req, res) => {
   db.prepare('DELETE FROM visits WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
+// ---------- Afiliados ----------
+const affByCode = (c) => { c = String(c || '').toLowerCase().trim(); return c ? db.prepare('SELECT * FROM affiliates WHERE code = ? AND active = 1').get(c) : null; };
+const slug = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20);
+function affStats(a) {
+  const n = (sql, ...p) => db.prepare(sql).get(...p).n;
+  const sales = db.prepare('SELECT * FROM aff_sales WHERE affiliate_id = ? ORDER BY created_at DESC').all(a.id);
+  return {
+    clicks: n("SELECT COUNT(*) n FROM ref_events WHERE affiliate_id = ? AND kind = 'click'", a.id),
+    whatsapp: n("SELECT COUNT(*) n FROM ref_events WHERE affiliate_id = ? AND kind = 'wa'", a.id),
+    visits: n('SELECT COUNT(*) n FROM visits WHERE ref_code = ?', a.code),
+    closed: sales.length,
+    earned: sales.reduce((t, x) => t + x.amount, 0),
+    paid: sales.filter((x) => x.paid).reduce((t, x) => t + x.amount, 0),
+    sales,
+  };
+}
+// Público: registra clique no link / clique no WhatsApp (conta 1 por visitante por dia)
+const refHits = new Map();
+app.post('/api/ref/event', (req, res) => {
+  const b = req.body || {}, a = affByCode(b.code), kind = b.kind === 'wa' ? 'wa' : 'click';
+  if (!a) return res.json({ ok: false });
+  const ip = req.ip, now = Date.now();
+  const hits = (refHits.get(ip) || []).filter((t) => now - t < 3600e3);
+  if (hits.length >= 60) return res.json({ ok: false });
+  hits.push(now); refHits.set(ip, hits);
+  const visitor = crypto.createHash('sha256').update(ip + '|' + (req.get('user-agent') || '')).digest('hex').slice(0, 16);
+  const listingId = parseInt(b.listing_id) || null;
+  const dup = db.prepare("SELECT 1 FROM ref_events WHERE affiliate_id = ? AND kind = ? AND visitor = ? AND IFNULL(listing_id,0) = ? AND created_at > datetime('now','-1 day')").get(a.id, kind, visitor, listingId || 0);
+  if (!dup) db.prepare('INSERT INTO ref_events (affiliate_id, kind, listing_id, visitor) VALUES (?, ?, ?, ?)').run(a.id, kind, listingId, visitor);
+  res.json({ ok: true });
+});
+// Público: painel do afiliado (link secreto)
+app.get('/api/aff/:token', (req, res) => {
+  const a = db.prepare('SELECT * FROM affiliates WHERE token = ?').get(String(req.params.token));
+  if (!a) return res.status(404).json({ error: 'Link inválido' });
+  const st = affStats(a);
+  const visits = db.prepare('SELECT listing_title, name, date, status, created_at FROM visits WHERE ref_code = ? ORDER BY created_at DESC LIMIT 200').all(a.code)
+    .map((v) => ({ ...v, name: String(v.name || '').trim().split(/\s+/)[0] })); // só o primeiro nome
+  res.json({ name: a.name, code: a.code, active: !!a.active, commission: AFF_COMMISSION,
+    stats: { clicks: st.clicks, whatsapp: st.whatsapp, visits: st.visits, closed: st.closed, earned: st.earned, paid: st.paid },
+    sales: st.sales.map((x) => ({ listing_title: x.listing_title, tenant_name: String(x.tenant_name || '').trim().split(/\s+/)[0], amount: x.amount, paid: !!x.paid, created_at: x.created_at, paid_at: x.paid_at })),
+    visits });
+});
+app.get('/parceiro/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'affiliate.html')));
+// Admin
+app.get('/api/admin/affiliates', requireAdmin, (req, res) => {
+  res.json({ commission: AFF_COMMISSION, affiliates: db.prepare('SELECT * FROM affiliates ORDER BY created_at DESC').all().map((a) => ({ ...a, active: !!a.active, ...affStats(a) })) });
+});
+app.post('/api/admin/affiliates', requireAdmin, (req, res) => {
+  const b = req.body || {};
+  const name = String(b.name || '').trim().slice(0, 120);
+  if (!name) return res.status(400).json({ error: 'Nome é obrigatório' });
+  let code = slug(b.code || name.split(/\s+/)[0]);
+  if (!code) return res.status(400).json({ error: 'Código inválido' });
+  const base = code; let i = 2;
+  while (db.prepare('SELECT 1 FROM affiliates WHERE code = ?').get(code)) code = base + i++;
+  const token = crypto.randomBytes(12).toString('hex');
+  const info = db.prepare('INSERT INTO affiliates (name, code, email, phone, token, notes) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(name, code, String(b.email || '').slice(0, 160), String(b.phone || '').slice(0, 40), token, String(b.notes || '').slice(0, 1000));
+  res.json(db.prepare('SELECT * FROM affiliates WHERE id = ?').get(info.lastInsertRowid));
+});
+app.put('/api/admin/affiliates/:id', requireAdmin, (req, res) => {
+  const b = req.body || {}, a = db.prepare('SELECT * FROM affiliates WHERE id = ?').get(req.params.id);
+  if (!a) return res.status(404).json({ error: 'Afiliado não encontrado' });
+  db.prepare('UPDATE affiliates SET name = ?, email = ?, phone = ?, notes = ?, active = ? WHERE id = ?').run(
+    'name' in b ? String(b.name).slice(0, 120) : a.name, 'email' in b ? String(b.email).slice(0, 160) : a.email,
+    'phone' in b ? String(b.phone).slice(0, 40) : a.phone, 'notes' in b ? String(b.notes).slice(0, 1000) : a.notes,
+    'active' in b ? (b.active ? 1 : 0) : a.active, a.id);
+  res.json({ ok: true });
+});
+app.delete('/api/admin/affiliates/:id', requireAdmin, (req, res) => {
+  db.prepare('DELETE FROM ref_events WHERE affiliate_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM aff_sales WHERE affiliate_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM affiliates WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+// Quarto fechado (comissão): a partir de uma visita indicada ou lançado à mão
+app.post('/api/admin/affiliates/:id/sales', requireAdmin, (req, res) => {
+  const b = req.body || {}, a = db.prepare('SELECT * FROM affiliates WHERE id = ?').get(req.params.id);
+  if (!a) return res.status(404).json({ error: 'Afiliado não encontrado' });
+  const visitId = parseInt(b.visit_id) || null;
+  if (visitId && db.prepare('SELECT 1 FROM aff_sales WHERE visit_id = ?').get(visitId)) return res.status(409).json({ error: 'Essa visita já foi marcada como fechada' });
+  const v = visitId ? db.prepare('SELECT * FROM visits WHERE id = ?').get(visitId) : null;
+  db.prepare('INSERT INTO aff_sales (affiliate_id, visit_id, listing_title, tenant_name, amount) VALUES (?, ?, ?, ?, ?)').run(
+    a.id, visitId, String(b.listing_title || v?.listing_title || '').slice(0, 200), String(b.tenant_name || v?.name || '').slice(0, 120),
+    Math.max(0, parseInt(b.amount ?? AFF_COMMISSION) || 0));
+  res.json({ ok: true });
+});
+app.put('/api/admin/sales/:id', requireAdmin, (req, res) => {
+  const paid = req.body && req.body.paid ? 1 : 0;
+  db.prepare('UPDATE aff_sales SET paid = ?, paid_at = ? WHERE id = ?').run(paid, paid ? new Date().toISOString().slice(0, 10) : null, req.params.id);
+  res.json({ ok: true });
+});
+app.delete('/api/admin/sales/:id', requireAdmin, (req, res) => {
+  db.prepare('DELETE FROM aff_sales WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
 app.get('/api/admin/status', requireAdmin, (req, res) => res.json({ emailConfigured: !!(mailer && NOTIFY_EMAIL), notifyEmail: NOTIFY_EMAIL }));
 app.post('/api/admin/test-email', requireAdmin, async (req, res) => {
   try {
