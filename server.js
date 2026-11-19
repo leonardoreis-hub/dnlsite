@@ -512,6 +512,40 @@ app.delete('/api/admin/affiliates/:id', requireAdmin, (req, res) => {
   db.prepare('DELETE FROM affiliates WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
+// Dashboard de afiliados (admin): totais do período, ranking, série diária e atividade recente
+app.get('/api/admin/aff-dashboard', requireAdmin, (req, res) => {
+  const days = Math.max(1, Math.min(365, parseInt(req.query.days) || 30));
+  const since = `-${days} days`;
+  const affs = db.prepare('SELECT id, name, code, active FROM affiliates').all();
+  const byId = Object.fromEntries(affs.map((a) => [a.id, a])), byCode = Object.fromEntries(affs.map((a) => [a.code, a]));
+  const ev = db.prepare("SELECT affiliate_id, kind, listing_id, created_at FROM ref_events WHERE created_at >= datetime('now', ?)").all(since);
+  const vis = db.prepare("SELECT id, ref_code, listing_title, name, status, created_at FROM visits WHERE ref_code IS NOT NULL AND created_at >= datetime('now', ?)").all(since);
+  const sal = db.prepare("SELECT * FROM aff_sales WHERE created_at >= datetime('now', ?)").all(since);
+  const dueAll = db.prepare('SELECT IFNULL(SUM(amount),0) n FROM aff_sales WHERE paid = 0').get().n;
+  const rank = affs.map((a) => {
+    const e = ev.filter((x) => x.affiliate_id === a.id), v = vis.filter((x) => x.ref_code === a.code), s = sal.filter((x) => x.affiliate_id === a.id);
+    return { id: a.id, name: a.name, code: a.code, active: !!a.active, clicks: e.filter((x) => x.kind === 'click').length, whatsapp: e.filter((x) => x.kind === 'wa').length,
+      visits: v.length, closed: s.length, earned: s.reduce((t, x) => t + x.amount, 0) };
+  }).sort((a, b) => b.closed - a.closed || b.visits - a.visits || b.whatsapp - a.whatsapp || b.clicks - a.clicks);
+  const series = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
+    const on = (x) => String(x.created_at).slice(0, 10) === d;
+    series.push({ date: d, clicks: ev.filter((x) => x.kind === 'click' && on(x)).length, whatsapp: ev.filter((x) => x.kind === 'wa' && on(x)).length, visits: vis.filter(on).length, closed: sal.filter(on).length });
+  }
+  const titles = Object.fromEntries(db.prepare('SELECT id, title FROM listings').all().map((l) => [l.id, l.title]));
+  const feed = [
+    ...db.prepare('SELECT affiliate_id, kind, listing_id, created_at FROM ref_events ORDER BY id DESC LIMIT 40').all()
+      .map((x) => ({ at: x.created_at, kind: x.kind, who: byId[x.affiliate_id]?.name || '—', what: titles[x.listing_id] || 'Página inicial' })),
+    ...db.prepare('SELECT ref_code, listing_title, name, created_at FROM visits WHERE ref_code IS NOT NULL ORDER BY id DESC LIMIT 40').all()
+      .map((x) => ({ at: x.created_at, kind: 'visit', who: byCode[x.ref_code]?.name || x.ref_code, what: x.listing_title, lead: x.name })),
+    ...db.prepare('SELECT affiliate_id, listing_title, tenant_name, amount, created_at FROM aff_sales ORDER BY id DESC LIMIT 40').all()
+      .map((x) => ({ at: x.created_at, kind: 'closed', who: byId[x.affiliate_id]?.name || '—', what: x.listing_title, lead: x.tenant_name, amount: x.amount })),
+  ].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 40);
+  const sum = (k) => rank.reduce((t, r) => t + r[k], 0);
+  res.json({ days, now: new Date().toISOString(), totals: { affiliates: affs.filter((a) => a.active).length, clicks: sum('clicks'), whatsapp: sum('whatsapp'), visits: sum('visits'), closed: sum('closed'), earned: sum('earned'), due: dueAll }, rank, series, feed });
+});
+
 // Quarto fechado (comissão): a partir de uma visita indicada ou lançado à mão
 app.post('/api/admin/affiliates/:id/sales', requireAdmin, (req, res) => {
   const b = req.body || {}, a = db.prepare('SELECT * FROM affiliates WHERE id = ?').get(req.params.id);
