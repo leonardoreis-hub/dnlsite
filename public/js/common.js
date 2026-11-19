@@ -118,7 +118,28 @@ const DICT = {
 };
 // WhatsApp da DNL (botão nos anúncios)
 const WA_NUMBER = '353834794791';
-const waLink = (title) => `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(t('waMsg', { title, url: location.origin + location.pathname }))}`;
+// Afiliados: quem chega por ?ref=codigo fica marcado por 60 dias
+const REF = (() => {
+  const q = (new URLSearchParams(location.search).get('ref') || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20);
+  try {
+    if (q) { localStorage.setItem('dnl-ref', JSON.stringify({ code: q, ts: Date.now() })); return q; }
+    const s = JSON.parse(localStorage.getItem('dnl-ref') || 'null');
+    if (s && s.code && Date.now() - s.ts < 60 * 864e5) return s.code;
+  } catch {}
+  return q || '';
+})();
+function refEvent(kind, listingId) {
+  if (!REF || location.pathname.startsWith('/admin') || location.pathname.startsWith('/parceiro')) return;
+  const body = JSON.stringify({ code: REF, kind, listing_id: listingId || null });
+  try { if (navigator.sendBeacon) { navigator.sendBeacon('/api/ref/event', new Blob([body], { type: 'application/json' })); return; } } catch {}
+  fetch('/api/ref/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+}
+if (new URLSearchParams(location.search).get('ref')) refEvent('click', (location.pathname.match(/^\/anuncio\/(\d+)/) || [])[1]);
+document.addEventListener('click', (e) => {
+  const a = e.target.closest && e.target.closest('a[href^="https://wa.me/"]');
+  if (a) refEvent('wa', (location.pathname.match(/^\/anuncio\/(\d+)/) || [])[1]);
+}, true);
+const waLink = (title) => `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(t('waMsg', { title, url: location.origin + location.pathname }) + (REF ? ` (ref: ${REF})` : ''))}`;
 const LI = { pt: 0, en: 1, es: 2 }[LANG];
 const t = (k, v = {}) => String((DICT[k] || [k])[LI] ?? DICT[k][0]).replace(/\{(\w+)\}/g, (_, x) => v[x] ?? '');
 const WORDS = {
