@@ -125,6 +125,7 @@ function loginView() {
 
 // ---------- Shell ----------
 function shell() {
+  clearInterval(window.__affT);
   const nNew = visits.filter((v) => v.status === 'novo').length;
   app.innerHTML = `
   <header class="adm-h"><div class="wrap">
@@ -479,6 +480,45 @@ async function save() {
   } catch (e) { toast(e.message); btn.disabled = false; btn.textContent = 'Salvar'; }
 }
 
+
+// ---------- Painel de afiliados (atualiza sozinho a cada 20 s) ----------
+let AFF_DAYS = 30;
+async function loadAffDash() {
+  const el = $('#affDash'); if (!el) return clearInterval(window.__affT);
+  let d; try { d = await api('/api/admin/aff-dashboard?days=' + AFF_DAYS); } catch { return; }
+  if (!$('#affDash')) return;
+  const T = d.totals, max = Math.max(1, ...d.series.map((x) => x.clicks + x.whatsapp + x.visits));
+  const ago = (at) => { const m = Math.round((Date.now() - new Date(String(at).replace(' ', 'T') + 'Z')) / 6e4); return m < 1 ? 'agora' : m < 60 ? `há ${m} min` : m < 1440 ? `há ${Math.round(m / 60)} h` : `há ${Math.round(m / 1440)} d`; };
+  const K = { click: ['👆', 'clicou no link'], wa: ['💬', 'chamou no WhatsApp'], visit: ['📅', 'agendou visita'], closed: ['✅', 'fechou contrato'] };
+  const tile = (lab, val, hl) => `<div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;${hl ? 'background:var(--bg-soft)' : ''}"><div style="font-size:12px;color:var(--muted)">${lab}</div><div style="font-size:24px;font-weight:700;margin-top:2px">${val}</div></div>`;
+  el.innerHTML = `
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+    <b style="font-size:17px">Painel em tempo real <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22a35a;margin-left:4px;vertical-align:middle"></span></b>
+    <span style="display:flex;gap:6px;align-items:center"><small style="color:var(--muted)">atualizado ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</small>
+      ${[7, 30, 90, 365].map((n) => `<button class="btn btn-sm ${n === AFF_DAYS ? 'btn-dark' : 'btn-outline'}" data-days="${n}">${n === 365 ? '1 ano' : n + ' dias'}</button>`).join('')}</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px">
+    ${tile('Afiliados ativos', T.affiliates)}${tile('Cliques', T.clicks)}${tile('WhatsApp', T.whatsapp)}${tile('Visitas', T.visits)}${tile('Quartos fechados', T.closed)}${tile('Comissão no período', '€' + T.earned)}${tile('A pagar (total)', '€' + T.due, 1)}
+  </div>
+  <div style="margin-top:18px"><small style="color:var(--muted)">Atividade por dia (cliques + WhatsApp + visitas; ✅ = quarto fechado)</small>
+    <div style="display:flex;align-items:flex-end;gap:2px;height:90px;margin-top:6px;border-bottom:1px solid var(--line)">
+      ${d.series.map((x) => { const v = x.clicks + x.whatsapp + x.visits; return `<div title="${x.date.split('-').reverse().join('/')}: ${x.clicks} cliques · ${x.whatsapp} WhatsApp · ${x.visits} visitas · ${x.closed} fechados" style="flex:1;min-width:2px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%">${x.closed ? '<span style="font-size:10px">✅</span>' : ''}<div style="width:100%;height:${Math.round(v / max * 100)}%;min-height:${v ? 2 : 0}px;background:var(--brand);border-radius:2px 2px 0 0;opacity:.85"></div></div>`; }).join('')}
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px"><span>${d.series[0].date.split('-').reverse().slice(0, 2).join('/')}</span><span>hoje</span></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:20px">
+    <div><b style="font-size:14px">Ranking no período</b>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:6px">
+        <tr style="color:var(--muted);text-align:left"><th style="padding:6px 4px">#</th><th>Afiliado</th><th>Cliques</th><th>WhatsApp</th><th>Visitas</th><th>Fechados</th><th>€</th></tr>
+        ${d.rank.length ? d.rank.map((r, i) => `<tr style="border-top:1px solid var(--line)"><td style="padding:6px 4px">${i + 1}</td><td><b>${esc(r.name)}</b>${r.active ? '' : ' <small style="color:var(--muted)">(pausado)</small>'}</td><td>${r.clicks}</td><td>${r.whatsapp}</td><td>${r.visits}</td><td><b>${r.closed}</b></td><td>€${r.earned}</td></tr>`).join('') : '<tr><td colspan="7" style="padding:8px 4px;color:var(--muted)">Nenhum afiliado ainda.</td></tr>'}
+      </table></div></div>
+    <div><b style="font-size:14px">Atividade recente</b>
+      <div style="margin-top:6px;max-height:280px;overflow:auto;font-size:13px">
+        ${d.feed.length ? d.feed.map((f) => `<div style="padding:6px 0;border-top:1px solid var(--line)">${K[f.kind][0]} <b>${esc(f.who)}</b> · ${K[f.kind][1]}${f.lead ? ` (${esc(String(f.lead).split(' ')[0])})` : ''}${f.amount ? ` · €${f.amount}` : ''}<br><small style="color:var(--muted)">${esc(f.what || '')} · ${ago(f.at)}</small></div>`).join('') : '<p style="color:var(--muted)">Nenhuma atividade ainda. Assim que alguém clicar num link de afiliado, aparece aqui.</p>'}
+      </div></div>
+  </div>`;
+  el.querySelectorAll('[data-days]').forEach((b) => b.onclick = () => { AFF_DAYS = +b.dataset.days; loadAffDash(); });
+}
 // ---------- Afiliados ----------
 function copyTxt(t) { navigator.clipboard.writeText(t).then(() => toast('Link copiado'), () => prompt('Copie o link:', t)); }
 function affView() {
@@ -487,6 +527,8 @@ function affView() {
   $('#main').innerHTML = `
   <div class="adm-top"><h1>Afiliados</h1><button class="btn btn-dark" id="affNew">+ Novo afiliado</button></div>
   <p style="color:var(--muted);margin:-8px 0 20px">Comissão: <b>€${AFF.commission}</b> por quarto fechado · ${tot.closed} fechado(s) no total · <b>€${tot.due}</b> a pagar</p>
+  <div id="affDash" class="vis" style="margin-bottom:24px"><p style="color:var(--muted)">Carregando painel…</p></div>
+  <h2 style="font-size:18px;margin:8px 0 12px">Afiliados cadastrados</h2>
   <div id="affForm" class="vis" style="margin-bottom:20px;display:none">
     <div class="fgroup" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
       <label class="field"><span>Nome*</span><input id="afName"></label>
@@ -515,6 +557,7 @@ function affView() {
       <span style="display:flex;gap:6px;align-items:center;white-space:nowrap">${x.paid ? `<span class="chip rent">Pago ${esc((x.paid_at || '').split('-').reverse().join('/'))}</span> <button class="btn btn-ghost btn-sm" data-unpay="${x.id}">desfazer</button>` : `<button class="btn btn-outline btn-sm" data-pay="${x.id}">Marcar como pago</button>`}
       <button class="btn btn-ghost btn-sm" data-sdel="${x.id}" style="color:#C13515">×</button></span></div>`).join('')}</div>` : ''}
   </div>`).join('') : '<div class="rows"><div class="empty"><h2>Nenhum afiliado ainda</h2><p>Cadastre um afiliado para gerar o link de divulgação dele.</p></div></div>'}`;
+  loadAffDash(); window.__affT = setInterval(loadAffDash, 20000);
   $('#affNew').onclick = () => { $('#affForm').style.display = 'block'; $('#afName').focus(); };
   $('#afCancel').onclick = () => { $('#affForm').style.display = 'none'; };
   $('#afSave').onclick = async () => {
