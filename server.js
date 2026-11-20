@@ -19,6 +19,12 @@ fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'troque-esta-senha';
+// Vários administradores: ADMIN_USERS="leonardo:senha1; nahin:senha2; danilo:senha3"
+// (um por linha ou separados por ";"). O ADMIN_USER/ADMIN_PASSWORD antigo continua valendo.
+const ADMINS = String(process.env.ADMIN_USERS || '').split(/[;\n]+/).map((x) => x.trim()).filter(Boolean)
+  .map((x) => { const i = x.indexOf(':'); return i > 0 ? { user: x.slice(0, i).trim().toLowerCase(), password: x.slice(i + 1).trim() } : null; })
+  .filter((x) => x && x.user && x.password);
+if (!ADMINS.some((a) => a.user === ADMIN_USER.toLowerCase())) ADMINS.push({ user: ADMIN_USER.toLowerCase(), password: ADMIN_PASSWORD });
 const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL || '';
 const SITE_NAME = process.env.SITE_NAME || 'DNL Management';
 
@@ -212,7 +218,7 @@ const safeEq = (a, b) => {
   return A.length === B.length && crypto.timingSafeEqual(A, B);
 };
 
-// --- Auth (um único usuário) ---
+// --- Auth (um ou mais administradores) ---
 const attempts = new Map();
 app.post('/api/login', (req, res) => {
   const ip = req.ip, now = Date.now();
@@ -220,16 +226,18 @@ app.post('/api/login', (req, res) => {
   if (now - a.t > 15 * 60 * 1000) { a.n = 0; a.t = now; }
   if (a.n >= 10) return res.status(429).json({ error: 'Muitas tentativas. Tente em 15 minutos.' });
   const { user, password } = req.body || {};
-  if (safeEq(user, ADMIN_USER) && safeEq(password, ADMIN_PASSWORD)) {
+  const u = String(user || '').trim().toLowerCase();
+  const match = ADMINS.find((x) => safeEq(u, x.user) && safeEq(String(password || ''), x.password));
+  if (match) {
     attempts.delete(ip);
-    req.session.regenerate(() => { req.session.admin = true; res.json({ ok: true }); });
+    req.session.regenerate(() => { req.session.admin = true; req.session.adminUser = match.user; res.json({ ok: true, user: match.user }); });
   } else {
     a.n++; attempts.set(ip, a);
     res.status(401).json({ error: 'Usuário ou senha incorretos' });
   }
 });
 app.post('/api/logout', (req, res) => req.session.destroy(() => res.json({ ok: true })));
-app.get('/api/me', (req, res) => res.json({ admin: !!req.session.admin }));
+app.get('/api/me', (req, res) => res.json({ admin: !!req.session.admin, user: req.session.adminUser || null }));
 
 // --- Agenda de visitas (configurável no admin) ---
 db.exec(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
@@ -642,4 +650,5 @@ app.listen(PORT, () => {
   console.log(`${SITE_NAME} rodando em http://localhost:${PORT}`);
   if (!mailer || !NOTIFY_EMAIL) console.log('Aviso: e-mail não configurado (SMTP_HOST / NOTIFY_EMAIL). Pedidos ficam salvos no admin.');
   if (ADMIN_PASSWORD === 'troque-esta-senha') console.log('Aviso: defina ADMIN_PASSWORD no arquivo .env');
+  console.log(`Administradores: ${ADMINS.map((a) => a.user).join(', ')}`);
 });
