@@ -294,6 +294,8 @@ function availableSlots(listingId) {
       const o = JSON.parse(own.schedule);
       s.days = o.days || s.days;
       s.blocked = [...new Set([...(s.blocked || []), ...(o.blocked || [])])]; // bloqueios gerais + do quarto
+      if (typeof o.onePerSlot === 'boolean') s.onePerSlot = o.onePerSlot;
+      if (typeof o.minNoticeHours === 'number') s.minNoticeHours = o.minNoticeHours;
     } catch {}
   }
   const now = dublinNow();
@@ -374,7 +376,14 @@ function clean(b) {
     .filter((v) => v && typeof v.src === 'string' && /^\/(uploads|media)\/[\w.-]+$/.test(v.src))
     .map((v) => ({ src: v.src, poster: typeof v.poster === 'string' && /^\/(uploads|media)\/[\w.-]+$/.test(v.poster) ? v.poster : null })));
   if ('schedule' in o) {
-    if (o.schedule && typeof o.schedule === 'object') { const c = cleanSchedule(o.schedule); o.schedule = JSON.stringify({ days: c.days, blocked: c.blocked }); }
+    if (o.schedule && typeof o.schedule === 'object') {
+      const c = cleanSchedule(o.schedule);
+      const own = { days: c.days, blocked: c.blocked };
+      // Opcional por anúncio: visita aberta (várias pessoas no mesmo horário) e antecedência própria
+      if (typeof o.schedule.onePerSlot === 'boolean') own.onePerSlot = o.schedule.onePerSlot;
+      if (o.schedule.minNoticeHours != null && o.schedule.minNoticeHours !== '') own.minNoticeHours = Math.max(0, Math.min(168, parseInt(o.schedule.minNoticeHours) || 0));
+      o.schedule = JSON.stringify(own);
+    }
     else o.schedule = null;
   }
   if ('bills_included' in o) o.bills_included = o.bills_included ? 1 : 0;

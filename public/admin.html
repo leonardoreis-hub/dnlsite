@@ -512,7 +512,7 @@ async function save() {
     amenities: [...f.querySelectorAll('[name=am]:checked')].map((x) => x.value),
     photos: editing.photos, lat: editing.lat, lng: editing.lng,
     videos: (editing.videos || []).filter((x) => !x.processing).map((x) => ({ src: x.src, poster: x.poster })),
-    schedule: editing.schedule ? { days: editing.schedule.days, blocked: editing.schedule.blocked } : null,
+    schedule: editing.schedule ? { ...editing.schedule, days: editing.schedule.days, blocked: editing.schedule.blocked } : null,
   };
   body.i18n = { en: {}, es: {} };
   document.querySelectorAll('[data-tr]').forEach((x) => { const [lg, f] = x.dataset.tr.split('.'); body.i18n[lg][f] = x.value; });
