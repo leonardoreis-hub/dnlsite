@@ -520,6 +520,8 @@ async function loadAffDash() {
   el.querySelectorAll('[data-days]').forEach((b) => b.onclick = () => { AFF_DAYS = +b.dataset.days; loadAffDash(); });
 }
 // ---------- Afiliados ----------
+let AFF_Q = '';
+const affNorm = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 function copyTxt(t) { navigator.clipboard.writeText(t).then(() => toast('Link copiado'), () => prompt('Copie o link:', t)); }
 function affView() {
   const site = location.origin, list = AFF.affiliates;
@@ -528,7 +530,13 @@ function affView() {
   <div class="adm-top"><h1>Afiliados</h1><button class="btn btn-dark" id="affNew">+ Novo afiliado</button></div>
   <p style="color:var(--muted);margin:-8px 0 20px">Comissão: <b>€${AFF.commission}</b> por quarto fechado · ${tot.closed} fechado(s) no total · <b>€${tot.due}</b> a pagar</p>
   <div id="affDash" class="vis" style="margin-bottom:24px"><p style="color:var(--muted)">Carregando painel…</p></div>
-  <h2 style="font-size:18px;margin:8px 0 12px">Afiliados cadastrados</h2>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 12px">
+    <h2 style="font-size:18px;margin:0">Afiliados cadastrados <small id="affCount" style="color:var(--muted);font-weight:500;font-size:14px"></small></h2>
+    <label style="position:relative;flex:1;max-width:340px;min-width:200px">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="affQ" type="search" placeholder="Buscar por nome, código, e-mail ou telefone" autocomplete="off" style="width:100%;padding:10px 12px 10px 36px;border:1px solid var(--line);border-radius:999px;font:inherit;font-size:14px">
+    </label>
+  </div>
   <div id="affForm" class="vis" style="margin-bottom:20px;display:none">
     <div class="fgroup" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
       <label class="field"><span>Nome*</span><input id="afName"></label>
@@ -539,7 +547,7 @@ function affView() {
     <div style="margin-top:12px;display:flex;gap:8px"><button class="btn btn-brand btn-sm" id="afSave">Salvar afiliado</button><button class="btn btn-ghost btn-sm" id="afCancel">Cancelar</button></div>
   </div>
   ${list.length ? list.map((a) => `
-  <div class="vis">
+  <div class="vis" data-aq="${esc(affNorm([a.name, a.code, a.email, a.phone, (a.phone || '').replace(/\D/g, '')].join(' ')))}">
     <div class="top">
       <span class="when">${esc(a.name)} ${a.active ? '' : '<span class="chip off">Pausado</span>'}</span>
       <span style="display:flex;gap:6px;flex-wrap:wrap">
@@ -556,7 +564,14 @@ function affView() {
       <span>${esc(x.created_at.slice(0, 10).split('-').reverse().join('/'))} · ${esc(x.tenant_name || '—')} · ${esc(x.listing_title || '')} · €${x.amount}</span>
       <span style="display:flex;gap:6px;align-items:center;white-space:nowrap">${x.paid ? `<span class="chip rent">Pago ${esc((x.paid_at || '').split('-').reverse().join('/'))}</span> <button class="btn btn-ghost btn-sm" data-unpay="${x.id}">desfazer</button>` : `<button class="btn btn-outline btn-sm" data-pay="${x.id}">Marcar como pago</button>`}
       <button class="btn btn-ghost btn-sm" data-sdel="${x.id}" style="color:#C13515">×</button></span></div>`).join('')}</div>` : ''}
-  </div>`).join('') : '<div class="rows"><div class="empty"><h2>Nenhum afiliado ainda</h2><p>Cadastre um afiliado para gerar o link de divulgação dele.</p></div></div>'}`;
+  </div>`).join('') + '<p id="affNone" style="display:none;color:var(--muted);padding:12px 0">Nenhum afiliado encontrado.</p>' : '<div class="rows"><div class="empty"><h2>Nenhum afiliado ainda</h2><p>Cadastre um afiliado para gerar o link de divulgação dele.</p></div></div>'}`;
+  const affFilter = () => {
+    AFF_Q = $('#affQ').value; const q = affNorm(AFF_Q).trim().split(/\s+/).filter(Boolean); let n = 0;
+    document.querySelectorAll('[data-aq]').forEach((c) => { const ok = q.every((w) => c.dataset.aq.includes(w)); c.style.display = ok ? '' : 'none'; n += ok; });
+    $('#affCount').textContent = q.length ? `(${n} de ${list.length})` : `(${list.length})`;
+    if ($('#affNone')) $('#affNone').style.display = n ? 'none' : 'block';
+  };
+  $('#affQ').value = AFF_Q; $('#affQ').oninput = affFilter; affFilter();
   loadAffDash(); window.__affT = setInterval(loadAffDash, 20000);
   $('#affNew').onclick = () => { $('#affForm').style.display = 'block'; $('#afName').focus(); };
   $('#afCancel').onclick = () => { $('#affForm').style.display = 'none'; };
