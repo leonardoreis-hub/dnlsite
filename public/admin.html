@@ -319,6 +319,11 @@ function openEditor(l) {
       <input type="file" id="fi" accept="image/*" multiple hidden></div>
     <div class="ph" id="ph"></div>
 
+    <h4>Vídeos</h4>
+    <div class="drop" id="vdrop"><b style="color:var(--ink)">Clique ou arraste um vídeo aqui</b><br><small>MP4 ou MOV (iPhone) até 600 MB. O site converte para um formato leve que abre em qualquer celular.</small>
+      <input type="file" id="vfi" accept="video/*,.mov,.mp4" hidden></div>
+    <div class="ph" id="vph"></div>
+
     <h4>Informações básicas</h4>
     <div class="stack">
       <label class="field"><span>Título do anúncio</span><input name="title" value="${esc(e.title)}" placeholder="Ex.: Quarto duplo iluminado perto da UCC" required></label>
@@ -412,6 +417,13 @@ function openEditor(l) {
   drop.ondragover = (ev) => { ev.preventDefault(); drop.classList.add('over'); };
   drop.ondragleave = () => drop.classList.remove('over');
   drop.ondrop = (ev) => { ev.preventDefault(); drop.classList.remove('over'); uploadFiles(ev.dataTransfer.files); };
+  const vdrop = $('#vdrop'), vfi = $('#vfi');
+  vdrop.onclick = () => vfi.click();
+  vfi.onchange = () => { uploadVideo(vfi.files[0]); vfi.value = ''; };
+  vdrop.ondragover = (ev) => { ev.preventDefault(); vdrop.classList.add('over'); };
+  vdrop.ondragleave = () => vdrop.classList.remove('over');
+  vdrop.ondrop = (ev) => { ev.preventDefault(); vdrop.classList.remove('over'); uploadVideo(ev.dataTransfer.files[0]); };
+  renderVideos();
 
   // Mapa
   setTimeout(() => {
@@ -451,6 +463,38 @@ function renderPhotos() {
   });
   $('#ph').querySelectorAll('[data-rm]').forEach((b) => b.onclick = () => { p.splice(+b.dataset.rm, 1); renderPhotos(); });
 }
+function renderVideos() {
+  const v = editing.videos || (editing.videos = []);
+  $('#vph').innerHTML = v.map((x, i) => `
+    <div class="it">${x.processing ? `<div style="display:grid;place-items:center;height:100%;font-size:12px;color:var(--muted);text-align:center;padding:6px">Convertendo vídeo…</div>`
+      : `<video src="${esc(x.src)}" ${x.poster ? `poster="${esc(x.poster)}"` : ''} muted playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover"></video>`}
+      <span class="cover">Vídeo</span>
+      <div class="ctl">${x.processing ? '' : `<button type="button" data-vrm="${i}" title="Remover">×</button>`}</div></div>`).join('');
+  $('#vph').querySelectorAll('[data-vrm]').forEach((b) => b.onclick = () => { v.splice(+b.dataset.vrm, 1); renderVideos(); });
+}
+async function uploadVideo(file) {
+  if (!file) return;
+  const fd = new FormData(); fd.append('video', file);
+  const vdrop = $('#vdrop'); const old = vdrop.innerHTML;
+  vdrop.innerHTML = `<b style="color:var(--ink)">Enviando vídeo (${Math.round(file.size / 1048576)} MB)…</b>`;
+  const ed = editing;
+  try {
+    const r = await api('/api/admin/upload-video', { method: 'POST', body: fd });
+    const item = { src: r.src, poster: r.poster, processing: true };
+    ed.videos.push(item); renderVideos();
+    toast('Vídeo enviado. A conversão leva alguns minutos; pode continuar editando.');
+    for (;;) {
+      await new Promise((ok) => setTimeout(ok, 4000));
+      const st = await api('/api/admin/upload-video/' + encodeURIComponent(r.id));
+      if (st.status === 'processing') continue;
+      if (st.status === 'ready') { item.processing = false; item.poster = st.poster; }
+      else { ed.videos.splice(ed.videos.indexOf(item), 1); toast(st.error || 'Falha ao converter o vídeo'); }
+      break;
+    }
+    if (editing === ed && $('#vph')) renderVideos();
+  } catch (e) { toast('Erro no envio do vídeo: ' + e.message); }
+  if ($('#vdrop')) { $('#vdrop').innerHTML = old; $('#vfi').onchange = () => { uploadVideo($('#vfi').files[0]); $('#vfi').value = ''; }; }
+}
 async function uploadFiles(files) {
   if (!files.length) return;
   const fd = new FormData(); [...files].forEach((f) => fd.append('photos', f));
@@ -462,10 +506,12 @@ async function uploadFiles(files) {
 async function save() {
   const f = $('#ef'), d = Object.fromEntries(new FormData(f));
   if (!d.title.trim()) { f.title.focus(); return toast('Dê um título ao anúncio'); }
+  if ((editing.videos || []).some((x) => x.processing)) return toast('Espere o vídeo terminar de converter antes de salvar');
   const body = {
     ...d, bills_included: f.bills_included.checked, published: $('#pub').checked, rented: $('#rent').checked,
     amenities: [...f.querySelectorAll('[name=am]:checked')].map((x) => x.value),
     photos: editing.photos, lat: editing.lat, lng: editing.lng,
+    videos: (editing.videos || []).filter((x) => !x.processing).map((x) => ({ src: x.src, poster: x.poster })),
     schedule: editing.schedule ? { days: editing.schedule.days, blocked: editing.schedule.blocked } : null,
   };
   body.i18n = { en: {}, es: {} };

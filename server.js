@@ -9,6 +9,9 @@ const session = require('express-session');
 const multer = require('multer');
 const sharp = require('sharp');
 const heicConvert = require('heic-convert');
+const { spawn } = require('child_process');
+let FFMPEG = 'ffmpeg';
+try { FFMPEG = require('ffmpeg-static') || 'ffmpeg'; } catch {}
 const Database = require('better-sqlite3');
 const nodemailer = require('nodemailer');
 
@@ -71,6 +74,7 @@ try { db.exec('ALTER TABLE listings ADD COLUMN rented_at TEXT'); } catch {}
 try { db.exec('ALTER TABLE listings ADD COLUMN i18n TEXT'); } catch {} // traduções EN/ES de título, descrição e regras
 try { db.exec('ALTER TABLE visits ADD COLUMN lang TEXT'); } catch {}
 try { db.exec('ALTER TABLE listings ADD COLUMN geo_checked TEXT'); } catch {} // auto-house | auto-street | manual | failed
+try { db.exec("ALTER TABLE listings ADD COLUMN videos TEXT DEFAULT '[]'"); } catch {} // vídeos do imóvel [{src, poster}]
 
 // --- Afiliados ---
 db.exec(`
@@ -135,6 +139,7 @@ const parseListing = (r) => r && ({
   rented: !!r.rented,
   amenities: JSON.parse(r.amenities || '[]'),
   photos: JSON.parse(r.photos || '[]'),
+  videos: JSON.parse(r.videos || '[]'),
   schedule: r.schedule ? JSON.parse(r.schedule) : null,
   i18n: r.i18n ? JSON.parse(r.i18n) : {},
 });
@@ -359,12 +364,15 @@ app.post('/api/visits', async (req, res) => {
 
 // --- Admin: anúncios ---
 const FIELDS = ['title', 'type', 'area', 'address', 'lat', 'lng', 'price', 'bills_included', 'available_from', 'min_months',
-  'guests', 'bedrooms', 'bathrooms', 'description', 'amenities', 'house_rules', 'photos', 'published', 'schedule', 'rented', 'i18n'];
+  'guests', 'bedrooms', 'bathrooms', 'description', 'amenities', 'house_rules', 'photos', 'videos', 'published', 'schedule', 'rented', 'i18n'];
 function clean(b) {
   const o = {};
   for (const f of FIELDS) if (f in b) o[f] = b[f];
   if ('amenities' in o) o.amenities = JSON.stringify(Array.isArray(o.amenities) ? o.amenities : []);
   if ('photos' in o) o.photos = JSON.stringify(Array.isArray(o.photos) ? o.photos : []);
+  if ('videos' in o) o.videos = JSON.stringify((Array.isArray(o.videos) ? o.videos : [])
+    .filter((v) => v && typeof v.src === 'string' && v.src.startsWith('/uploads/'))
+    .map((v) => ({ src: v.src, poster: typeof v.poster === 'string' && v.poster.startsWith('/uploads/') ? v.poster : null })));
   if ('schedule' in o) {
     if (o.schedule && typeof o.schedule === 'object') { const c = cleanSchedule(o.schedule); o.schedule = JSON.stringify({ days: c.days, blocked: c.blocked }); }
     else o.schedule = null;
@@ -407,7 +415,7 @@ app.put('/api/admin/listings/:id', requireAdmin, (req, res) => {
 });
 app.delete('/api/admin/listings/:id', requireAdmin, (req, res) => {
   const l = parseListing(db.prepare('SELECT * FROM listings WHERE id = ?').get(req.params.id));
-  if (l) for (const p of l.photos) { try { fs.unlinkSync(path.join(UPLOAD_DIR, path.basename(p))); } catch {} }
+  if (l) for (const p of [...l.photos, ...(l.videos || []).flatMap((v) => [v.src, v.poster]).filter(Boolean)]) { try { fs.unlinkSync(path.join(UPLOAD_DIR, path.basename(p))); } catch {} }
   db.prepare('DELETE FROM listings WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
@@ -430,6 +438,52 @@ app.post('/api/admin/upload', requireAdmin, upload.array('photos', 30), async (r
     } catch (e) { console.error('Falha ao processar foto:', f.originalname, e.message); }
   }
   res.json({ urls });
+});
+
+// --- Admin: upload de vídeo (converte para MP4 H.264 leve, que abre em qualquer celular) ---
+const TMP_DIR = path.join(DATA_DIR, 'tmp');
+fs.mkdirSync(TMP_DIR, { recursive: true });
+const videoUpload = multer({ dest: TMP_DIR, limits: { fileSize: 600 * 1024 * 1024, files: 1 } });
+const videoJobs = new Map(); // id -> { status: processing|ready|failed, src, poster, error }
+function runFfmpeg(args) {
+  return new Promise((resolve, reject) => {
+    const p = spawn(FFMPEG, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+    let err = ''; p.stderr.on('data', (d) => { err = (err + d).slice(-2000); });
+    p.on('error', reject);
+    p.on('close', (code) => (code === 0 ? resolve() : reject(new Error(err.split('\n').slice(-4).join(' ')))));
+  });
+}
+app.post('/api/admin/upload-video', requireAdmin, videoUpload.single('video'), (req, res) => {
+  const f = req.file;
+  if (!f) return res.status(400).json({ error: 'Nenhum vídeo recebido.' });
+  const id = `${Date.now()}-${crypto.randomBytes(5).toString('hex')}`;
+  const src = `/uploads/${id}.mp4`, poster = `/uploads/${id}.jpg`;
+  videoJobs.set(id, { status: 'processing', src, poster });
+  res.json({ id, status: 'processing', src, poster });
+  (async () => {
+    const out = path.join(UPLOAD_DIR, `${id}.mp4`), part = out + '.part.mp4';
+    try {
+      await runFfmpeg(['-y', '-i', f.path, '-vf', "scale='if(gt(iw,ih),min(1280,iw),-2)':'if(gt(iw,ih),-2,min(1280,ih))'",
+        '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '26', '-pix_fmt', 'yuv420p', '-profile:v', 'high',
+        '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', part]);
+      fs.renameSync(part, out);
+      try { await runFfmpeg(['-y', '-ss', '1', '-i', out, '-frames:v', '1', '-vf', "scale='min(1280,iw)':-2", '-q:v', '3', path.join(UPLOAD_DIR, `${id}.jpg`)]); }
+      catch { videoJobs.get(id).poster = null; }
+      videoJobs.get(id).status = 'ready';
+    } catch (e) {
+      console.error('Falha ao converter vídeo:', f.originalname, e.message);
+      Object.assign(videoJobs.get(id), { status: 'failed', error: 'Não foi possível converter o vídeo.' });
+      try { fs.unlinkSync(part); } catch {}
+    } finally { try { fs.unlinkSync(f.path); } catch {} }
+  })();
+});
+app.get('/api/admin/upload-video/:id', requireAdmin, (req, res) => {
+  const j = videoJobs.get(req.params.id);
+  if (!j) {
+    const ok = fs.existsSync(path.join(UPLOAD_DIR, `${path.basename(req.params.id)}.mp4`));
+    return res.json(ok ? { status: 'ready', src: `/uploads/${req.params.id}.mp4`, poster: `/uploads/${req.params.id}.jpg` } : { status: 'failed', error: 'Envio não encontrado.' });
+  }
+  res.json(j);
 });
 
 // --- Admin: visitas ---

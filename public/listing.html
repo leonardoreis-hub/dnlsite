@@ -162,6 +162,7 @@ function render() {
           <p>${facts}</p>
         </div>
         <div class="sec"><div class="hl">${highlights.map(([ic, b, s]) => `<div>${ic}<span><b>${esc(b)}</b><small>${esc(s)}</small></span></div>`).join('')}</div></div>
+        ${(L.videos || []).length ? `<div class="sec"><h3>${t('videoTour')}</h3>${L.videos.map((v) => `<video controls playsinline preload="metadata" ${v.poster ? `poster="${esc(v.poster)}"` : ''} style="width:100%;max-height:70vh;border-radius:12px;background:#000;margin-top:12px"><source src="${esc(v.src)}" type="video/mp4"></video>`).join('')}</div>` : ''}
         ${DESC ? `<div class="sec"><h3>${t('about')}</h3><div class="desc">${esc(DESC)}</div></div>` : ''}
         ${L.amenities.length ? `<div class="sec"><h3>${t('offers')}</h3>
           <div class="amen">${L.amenities.map((a) => `<div>${AMENITIES[a] || I.dot}<span>${esc(tAmen(a))}</span></div>`).join('')}</div></div>` : ''}

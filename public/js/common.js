@@ -86,6 +86,7 @@ const DICT = {
   favSaved: ['Salvo nos favoritos', 'Saved to favourites', 'Guardado en favoritos'], favRemoved: ['Removido dos favoritos', 'Removed from favourites', 'Eliminado de favoritos'],
   fav: ['Favoritar', 'Save', 'Guardar'], prev: ['Anterior', 'Previous', 'Anterior'], next: ['Próxima', 'Next', 'Siguiente'],
   share: ['Compartilhar', 'Share', 'Compartir'], save: ['Salvar', 'Save', 'Guardar'], linkCopied: ['Link copiado', 'Link copied', 'Enlace copiado'],
+  videoTour: ['Vídeo do imóvel', 'Video tour', 'Vídeo del inmueble'],
   showAll: ['Mostrar todas as fotos', 'Show all photos', 'Mostrar todas las fotos'], photo: ['Foto', 'Photo', 'Foto'], close: ['Fechar', 'Close', 'Cerrar'],
   hlRoom: ['Seu quarto com áreas comuns compartilhadas.', 'Your own room with shared common areas.', 'Tu propia habitación con zonas comunes compartidas.'],
   hlWhole: ['O espaço inteiro só para você.', 'The whole place just for you.', 'Todo el espacio solo para ti.'],
