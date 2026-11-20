@@ -101,7 +101,7 @@
 <script>
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app');
-let listings = [], visits = [], tab = 'listings', editing = null, status = {}, AFF = { commission: 50, affiliates: [] };
+let listings = [], visits = [], tab = 'listings', editing = null, status = {}, AFF = { commission: 50, affiliates: [] }, ME = {};
 
 // ---------- Login ----------
 function loginView() {
@@ -136,7 +136,7 @@ function shell() {
       <button class="tab${tab === 'agenda' ? ' on' : ''}" data-t="agenda">Agenda</button>
       <button class="tab${tab === 'aff' ? ' on' : ''}" data-t="aff">Afiliados</button>
     </div>
-    <button class="btn btn-ghost" id="logout">Sair</button>
+    <span style="display:flex;align-items:center;gap:6px">${ME.user ? `<small style="color:var(--muted)">${esc(ME.user.charAt(0).toUpperCase() + ME.user.slice(1))}</small>` : ''}<button class="btn btn-ghost" id="logout">Sair</button></span>
   </div></header>
   <main class="wrap adm" id="main"></main>
   <div class="modal ed" id="ed"><div class="sheet" id="edSheet"></div></div>`;
@@ -580,6 +580,7 @@ function affView() {
 
 async function load() {
   [listings, visits, status, AFF] = await Promise.all([api('/api/admin/listings'), api('/api/admin/visits'), api('/api/admin/status'), api('/api/admin/affiliates').catch(() => ({ commission: 50, affiliates: [] }))]);
+  ME = await api('/api/me').catch(() => ({}));
 }
 async function boot() {
   try { await load(); shell(); } catch (e) { if (e.status === 401) loginView(); else app.innerHTML = '<div class="empty"><h2>Erro ao carregar</h2></div>'; }
