@@ -371,8 +371,8 @@ function clean(b) {
   if ('amenities' in o) o.amenities = JSON.stringify(Array.isArray(o.amenities) ? o.amenities : []);
   if ('photos' in o) o.photos = JSON.stringify(Array.isArray(o.photos) ? o.photos : []);
   if ('videos' in o) o.videos = JSON.stringify((Array.isArray(o.videos) ? o.videos : [])
-    .filter((v) => v && typeof v.src === 'string' && v.src.startsWith('/uploads/'))
-    .map((v) => ({ src: v.src, poster: typeof v.poster === 'string' && v.poster.startsWith('/uploads/') ? v.poster : null })));
+    .filter((v) => v && typeof v.src === 'string' && /^\/(uploads|media)\/[\w.-]+$/.test(v.src))
+    .map((v) => ({ src: v.src, poster: typeof v.poster === 'string' && /^\/(uploads|media)\/[\w.-]+$/.test(v.poster) ? v.poster : null })));
   if ('schedule' in o) {
     if (o.schedule && typeof o.schedule === 'object') { const c = cleanSchedule(o.schedule); o.schedule = JSON.stringify({ days: c.days, blocked: c.blocked }); }
     else o.schedule = null;
@@ -415,7 +415,7 @@ app.put('/api/admin/listings/:id', requireAdmin, (req, res) => {
 });
 app.delete('/api/admin/listings/:id', requireAdmin, (req, res) => {
   const l = parseListing(db.prepare('SELECT * FROM listings WHERE id = ?').get(req.params.id));
-  if (l) for (const p of [...l.photos, ...(l.videos || []).flatMap((v) => [v.src, v.poster]).filter(Boolean)]) { try { fs.unlinkSync(path.join(UPLOAD_DIR, path.basename(p))); } catch {} }
+  if (l) for (const p of [...l.photos, ...(l.videos || []).flatMap((v) => [v.src, v.poster]).filter((x) => x && x.startsWith('/uploads/'))]) { try { fs.unlinkSync(path.join(UPLOAD_DIR, path.basename(p))); } catch {} }
   db.prepare('DELETE FROM listings WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
